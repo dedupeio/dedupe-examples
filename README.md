@@ -1,10 +1,11 @@
-# Dedupe Python Library
+# Dedupe Examples
 
-## Usage examples
+Example scripts for the [dedupe](https://github.com/datamade/dedupe), a library that uses machine learning to perform de-duplication and entity resolution quickly on structured data.
 
-Dedupe is a library and not a stand-alone command line tool. To demonstrate its usage, we have come up with a few example recipes for different sized datasets.
+### [CSV example](http://datamade.github.com/dedupe/doc/csv_example.html)
 
-### [CSV example](http://datamade.github.com/dedupe/doc/csv_example.html) (<10,000 rows)
+This example works with a list of early childhood education sites in Chicago from 10 different sources.
+
 ```bash
 cd csv_example
 python csv_example.py
@@ -13,8 +14,19 @@ python csv_example.py
   
 **To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](http://datamade.github.com/dedupe/doc/csv_example.html).**
 
-### [MySQL example](http://datamade.github.com/dedupe/doc/mysql_example.html) (10,000 - 1,000,000+ rows)
-This can take a few hours and will noticeably tax your laptop. You might want to run it overnight.
+### [Record Linkage example](http://datamade.github.com/dedupe/doc/record_linkage_example.html) 
+This example links two spreadsheets of products from online stores and links up the matching entries. Each dataset individually has no duplicates.
+
+```bash
+cd record_linkage_example
+python record_linkage_example.py 
+```
+
+**To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](http://datamade.github.com/dedupe/doc/record_linkage_example.html).**
+
+### [MySQL example](http://datamade.github.com/dedupe/doc/mysql_example.html)
+
+Takes a database of IL campaign contribution data, loads it in to a MySQL database, and identifies the unique donors. This can take a few hours and will noticeably tax your laptop. You might want to run it overnight.
 
 To follow this example you need to 
 
@@ -33,16 +45,6 @@ python mysql_example.py
   (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished) 
 
 **To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](http://datamade.github.com/dedupe/doc/mysql_example.html).** 
-
-### [Record Linkage example](http://datamade.github.com/dedupe/doc/record_linkage_example.html) 
-This example links two datasets, where each dataset, individually has no duplicates.
-
-```bash
-cd record_linkage_example
-python record_linkage_example.py 
-```
-
-**To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](http://datamade.github.com/dedupe/doc/record_linkage_example.html).**
 
 ## Training
 
