@@ -2,7 +2,7 @@
 
 Example scripts for the [dedupe](https://github.com/datamade/dedupe), a library that uses machine learning to perform de-duplication and entity resolution quickly on structured data.
 
-### [CSV example](http://datamade.github.com/dedupe/doc/csv_example.html)
+### [CSV example](http://datamade.github.com/dedupe/doc/csv_example.html) - early childhood locations
 
 This example works with a list of early childhood education sites in Chicago from 10 different sources.
 
@@ -14,8 +14,8 @@ python csv_example.py
   
 **To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](http://datamade.github.com/dedupe/doc/csv_example.html).**
 
-### [Record Linkage example](http://datamade.github.com/dedupe/doc/record_linkage_example.html) 
-This example links two spreadsheets of products from online stores and links up the matching entries. Each dataset individually has no duplicates.
+### [Record Linkage example](http://datamade.github.com/dedupe/doc/record_linkage_example.html) -  electronics products
+This example links two spreadsheets of electronics products and links up the matching entries. Each dataset individually has no duplicates.
 
 ```bash
 cd record_linkage_example
@@ -24,7 +24,7 @@ python record_linkage_example.py
 
 **To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](http://datamade.github.com/dedupe/doc/record_linkage_example.html).**
 
-### [MySQL example](http://datamade.github.com/dedupe/doc/mysql_example.html)
+### [MySQL example](http://datamade.github.com/dedupe/doc/mysql_example.html) - IL campaign contributions
 
 Takes a database of IL campaign contribution data, loads it in to a MySQL database, and identifies the unique donors. This can take a few hours and will noticeably tax your laptop. You might want to run it overnight.
 
