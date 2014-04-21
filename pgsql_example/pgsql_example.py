@@ -6,7 +6,7 @@ Created on Fri Apr 11 15:04:10 2014
 This is an example of using dedupe.match againsts a dataset from a postgresql table.
 For larger datasets, please see the mysql example.
 
-__Note:__ You will need to run the pgsql_init_db.py script before executing this script.
+__Note:__ You will need to run the postgres_init_db.py script before executing this script.
 """
 
 import dedupe
