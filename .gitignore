@@ -24,4 +24,4 @@ mysql.cnf
 *settings
 Dedupe.egg-info/
 ENV
-dist
+distpgsql_init_db.py
