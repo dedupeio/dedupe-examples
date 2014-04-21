@@ -25,3 +25,4 @@ mysql.cnf
 Dedupe.egg-info/
 ENV
 distpgsql_init_db.py
+pgsql_example/pgsql_init_db.py
