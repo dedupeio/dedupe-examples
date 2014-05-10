@@ -28,7 +28,6 @@ import dedupe
 
 # Dedupe uses Python logging to show or suppress verbose output. Added for convenience.
 # To enable verbose logging, run `python examples/csv_example/csv_example.py -v`
-
 optp = optparse.OptionParser()
 optp.add_option('-v', '--verbose', dest='verbose', action='count',
                 help='Increase verbosity (specify multiple times for more)'
@@ -39,7 +38,7 @@ if opts.verbose == 1:
     log_level = logging.INFO
 elif opts.verbose >= 2:
     log_level = logging.DEBUG
-logging.basicConfig(level=log_level)
+logging.getLogger().setLevel(log_level)
 
 
 # ## Setup

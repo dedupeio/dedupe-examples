@@ -21,14 +21,16 @@ import psycopg2 as psy
 import psycopg2.extras
 
 optp = optparse.OptionParser()
-optp.add_option('-v', '--verbose', dest='verbose', action='count', help='Increase verbosity (specify multiple times for more)')
+optp.add_option('-v', '--verbose', dest='verbose', action='count',
+                help='Increase verbosity (specify multiple times for more)'
+                )
 (opts, args) = optp.parse_args()
-log_level = logging.WARNING
+log_level = logging.WARNING 
 if opts.verbose == 1:
     log_level = logging.INFO
 elif opts.verbose >= 2:
     log_level = logging.DEBUG
-logging.basicConfig(level=log_level)
+logging.getLogger().setLevel(log_level)
 
 settings_file = 'postgres_settings'
 training_file = 'postgres_training.json'

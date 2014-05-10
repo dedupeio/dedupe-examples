@@ -36,7 +36,6 @@ import dedupe
 # Dedupe uses Python logging to show or suppress verbose output. Added
 # for convenience.  To enable verbose output, run `python
 # examples/mysql_example/mysql_example.py -v`
-
 optp = optparse.OptionParser()
 optp.add_option('-v', '--verbose', dest='verbose', action='count',
                 help='Increase verbosity (specify multiple times for more)'
@@ -47,7 +46,7 @@ if opts.verbose == 1:
     log_level = logging.INFO
 elif opts.verbose >= 2:
     log_level = logging.DEBUG
-logging.basicConfig(level=log_level)
+logging.getLogger().setLevel(log_level)
 
 # ## Setup
 MYSQL_CNF = os.path.abspath('.') + '/mysql.cnf'
@@ -375,6 +374,8 @@ c.execute("SELECT donor_id, city, name, "
           "INNER JOIN processed_donors "
           "USING (donor_id) "
           "ORDER BY (block_id)")
+
+print c.next()
 
 print 'clustering...'
 clustered_dupes = deduper.matchBlocks(candidates_gen(c),
