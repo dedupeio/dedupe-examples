@@ -150,6 +150,7 @@ else:
     # Define the fields dedupe will pay attention to
     fields = {
         'Name': {'type': 'String', 'Has Missing':True},
+        'LatLong' : {'type' : 'LatLong', 'Has Missing' : True},
         'Class': {'type': 'Set', 'corpus' : classes()},
         'Coauthor': {'type': 'Set', 'corpus' : coauthors()},
         'Name Probability' : {'type' : 'Custom', 
