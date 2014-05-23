@@ -116,7 +116,7 @@ else:
         'title': {'type': 'String'},
         'description': {'type': 'Text',
                         'Has Missing' :True,
-                        'corpus' : []},
+                        'corpus' : descriptions()},
         'price': {'type' : 'Custom',
                   'comparator' : comparePrice,
                   'Has Missing' : True}}
