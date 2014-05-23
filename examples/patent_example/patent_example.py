@@ -132,6 +132,14 @@ def name_probability_log_odds(field_1, field_2) :
 print 'importing data ...'
 data_d = readData(input_file)
 
+def classes() :
+    for record in data_d.itervalues() :
+        yield record['Class']
+
+def coauthors() :
+    for record in data_d.itervalues() :
+        yield record['Coauthor']
+
 # ## Training
 
 if os.path.exists(settings_file):
@@ -142,8 +150,8 @@ else:
     # Define the fields dedupe will pay attention to
     fields = {
         'Name': {'type': 'String', 'Has Missing':True},
-        'Class': {'type': 'Set'},
-        'Coauthor': {'type': 'Set'},
+        'Class': {'type': 'Set', 'corpus' : classes()},
+        'Coauthor': {'type': 'Set', 'corpus' : coauthors()},
         'Name Probability' : {'type' : 'Custom', 
                               'comparator' : name_probability_log_odds},
         'Class-Odds' : {'type' : 'Interaction', 
