@@ -22,7 +22,9 @@ import logging
 import optparse
 import time
 import sys
+import math
 
+from collections import defaultdict
 from dedupe import AsciiDammit
 
 import dedupe
@@ -88,6 +90,10 @@ def readData(filename, set_delim='**'):
     1. Expect this requirement will likely be relaxed in the future.**
     """
 
+    word_count = defaultdict(int)
+    all_words = 0.0
+
+
     data_d = {}
     with open(filename) as f:
         reader = csv.DictReader(f)
@@ -101,21 +107,34 @@ def readData(filename, set_delim='**'):
             row['Coauthor'] = frozenset([author for author
                                          in row['Coauthor'].split(set_delim)
                                          if author != 'none'])
-            clean_row = [(k, v) for (k, v) in row.items()]
             
-            data_d[idx] = dedupe.core.frozendict(clean_row)
+            for word in row['Name'].split() :
+                word_count[word] += 1
+                all_words += 1
             
+            data_d[idx] = row
+
+    for word in word_count :
+        word_count[word] /= all_words
+
+    for idx, record in data_d.items() :
+        name_prob = 1
+        for word in record['Name'].split() :
+            name_prob *= word_count[word]
+        record['Name Count'] = name_prob
+        
     return data_d
 
 
 print 'importing data ...'
 data_d = readData(input_file)
 
-## Build the comparators
-coauthors = [row['Coauthor'] for idx, row in data_d.items()]
-classes = [row['Class'] for idx, row in data_d.items()]
-class_comparator = dedupe.distance.cosine.CosineSimilarity(classes)
-coauthor_comparator = dedupe.distance.cosine.CosineSimilarity(coauthors)
+N = len(data_d)
+
+def difference(field_1, field_2) :
+    phi = field_1 * field_2
+    return math.log(phi/(1-phi))
+
 
 # ## Training
 
@@ -127,9 +146,18 @@ else:
     # Define the fields dedupe will pay attention to
     fields = {
         'Name': {'type': 'String', 'Has Missing':True},
-        'LatLong': {'type': 'LatLong', 'Has Missing':True},
+        #'LatLong': {'type': 'LatLong', 'Has Missing':True},
         'Class': {'type': 'Set'},
         'Coauthor': {'type': 'Set'},
+        'Name Count' : {'type' : 'Custom', 'comparator' : difference},
+        'Class-Count' : {'type' : 'Interaction', 
+                         'Interaction Fields' : ['Name Count', 'Class']},
+        'Name-Count' : {'type' : 'Interaction', 
+                        'Interaction Fields' : ['Name Count', 'Name']},
+        'Coauthor-Count' : {'type' : 'Interaction', 
+                            'Interaction Fields' : ['Name Count', 'Coauthor']}
+
+
         }
 
     # Create a new deduper object and pass our data model to it.
@@ -170,7 +198,7 @@ else:
     # this file.
     deduper.writeSettings(settings_file)
 
-threshold = deduper.threshold(data_d, recall_weight=2)
+threshold = deduper.threshold(data_d, recall_weight=4)
 
 clustered_dupes = deduper.match(data_d, threshold)
 
