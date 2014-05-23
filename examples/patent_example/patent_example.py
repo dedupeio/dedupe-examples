@@ -20,16 +20,10 @@ import re
 import collections
 import logging
 import optparse
-import time
-import sys
 import math
 
-from collections import defaultdict
-from dedupe import AsciiDammit
-
 import dedupe
-from dedupe.distance import cosine
-sys.modules['cosine'] = cosine
+
 # ## Logging
 
 # Dedupe uses Python logging to show or suppress verbose output. Added
@@ -67,7 +61,7 @@ def preProcess(column):
     be ignored.
     """
 
-    column = AsciiDammit.asciiDammit(column)
+    column = dedupe.asciiDammit(column)
     column = re.sub('  +', ' ', column)
     column = re.sub('\n', ' ', column)
     column = column.strip().strip('"').strip("'").lower().strip()
@@ -90,9 +84,8 @@ def readData(filename, set_delim='**'):
     1. Expect this requirement will likely be relaxed in the future.**
     """
 
-    word_count = defaultdict(int)
+    word_count = collections.defaultdict(int)
     all_words = 0.0
-
 
     data_d = {}
     with open(filename) as f:
@@ -108,6 +101,10 @@ def readData(filename, set_delim='**'):
                                          in row['Coauthor'].split(set_delim)
                                          if author != 'none'])
             
+            if not row['Name'] :
+                word_count[''] += 1
+                all_words += 1
+
             for word in row['Name'].split() :
                 word_count[word] += 1
                 all_words += 1
@@ -119,22 +116,21 @@ def readData(filename, set_delim='**'):
 
     for idx, record in data_d.items() :
         name_prob = 1
+        if not record['Name'] :
+            name_prob *= word_count['']
+
         for word in record['Name'].split() :
             name_prob *= word_count[word]
-        record['Name Count'] = name_prob
+        record['Name Probability'] = name_prob
         
     return data_d
 
-
-print 'importing data ...'
-data_d = readData(input_file)
-
-N = len(data_d)
-
-def difference(field_1, field_2) :
+def name_probability_log_odds(field_1, field_2) :
     phi = field_1 * field_2
     return math.log(phi/(1-phi))
 
+print 'importing data ...'
+data_d = readData(input_file)
 
 # ## Training
 
@@ -146,16 +142,19 @@ else:
     # Define the fields dedupe will pay attention to
     fields = {
         'Name': {'type': 'String', 'Has Missing':True},
-        #'LatLong': {'type': 'LatLong', 'Has Missing':True},
         'Class': {'type': 'Set'},
         'Coauthor': {'type': 'Set'},
-        'Name Count' : {'type' : 'Custom', 'comparator' : difference},
-        'Class-Count' : {'type' : 'Interaction', 
-                         'Interaction Fields' : ['Name Count', 'Class']},
-        'Name-Count' : {'type' : 'Interaction', 
-                        'Interaction Fields' : ['Name Count', 'Name']},
-        'Coauthor-Count' : {'type' : 'Interaction', 
-                            'Interaction Fields' : ['Name Count', 'Coauthor']}
+        'Name Probability' : {'type' : 'Custom', 
+                              'comparator' : name_probability_log_odds},
+        'Class-Odds' : {'type' : 'Interaction', 
+                        'Interaction Fields' : ['Name Probability', 
+                                                'Class']},
+        'Name-Odds' : {'type' : 'Interaction', 
+                       'Interaction Fields' : ['Name Probability', 
+                                                 'Name']},
+        'Coauthor-Odds' : {'type' : 'Interaction', 
+                           'Interaction Fields' : ['Name Probability', 
+                                                   'Coauthor']}
 
 
         }
