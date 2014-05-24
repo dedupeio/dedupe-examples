@@ -63,7 +63,7 @@ def readData(filename, set_delim='**'):
     Remap columns for the following cases:
     - Lat and Long are mapped into a single LatLong tuple
     - Class and Coauthor are stored as delimited strings but mapped into 
-      frozensets
+      tuples
     """
 
     word_count = collections.defaultdict(int)
@@ -78,10 +78,10 @@ def readData(filename, set_delim='**'):
             row['LatLong'] = (float(row['Lat']), float(row['Lng']))
             del row['Lat']
             del row['Lng']
-            row['Class'] = frozenset(row['Class'].split(set_delim))
-            row['Coauthor'] = frozenset([author for author
-                                         in row['Coauthor'].split(set_delim)
-                                         if author != 'none'])
+            row['Class'] = tuple(row['Class'].split(set_delim))
+            row['Coauthor'] = tuple([author for author
+                                     in row['Coauthor'].split(set_delim)
+                                     if author != 'none'])
             
             if not row['Name'] :
                 word_count[''] += 1
