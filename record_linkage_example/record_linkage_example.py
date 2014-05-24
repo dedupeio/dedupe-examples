@@ -95,7 +95,13 @@ print 'importing data ...'
 data_1 = readData('AbtBuy_Abt.csv')
 data_2 = readData('AbtBuy_Buy.csv')
 
+def descriptions() :
+    for dataset in (data_1, data_2) :
+        for record in dataset.values() :
+            yield record['description']
+
 # ## Training
+
 
 if os.path.exists(settings_file):
     print 'reading from', settings_file
@@ -108,8 +114,9 @@ else:
     # for the 'price' field. 
     fields = {
         'title': {'type': 'String'},
-        'description': {'type': 'String',
-                        'Has Missing' :True},
+        'description': {'type': 'Text',
+                        'Has Missing' :True,
+                        'corpus' : descriptions()},
         'price': {'type' : 'Custom',
                   'comparator' : comparePrice,
                   'Has Missing' : True}}
@@ -158,7 +165,7 @@ else:
 # If we had more data, we would not pass in all the blocked data into
 # this function but a representative sample.
 
-threshold = linker.threshold(data_1, data_2, recall_weight=10)
+threshold = linker.threshold(data_1, data_2, recall_weight=2)
 
 # `match` will return sets of record IDs that dedupe
 # believes are all referring to the same entity.
