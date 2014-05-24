@@ -1,17 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-This code demonstrates how to use dedupe with a comma separated values
-(CSV) file. All operations are performed in memory, so will run very
-quickly on datasets up to ~10,000 rows.
+This code demonstrates how to use dedupe to disambiguate patent
+authors and demonstrates the Set and LatLong data types.
 
-We start with a CSV file containing our messy data. In this example,
-it is listings of early childhood education centers in Chicago
-compiled from several different sources.
-
-The output will be a CSV with our clustered results.
-
-For larger datasets, see our [mysql_example](http://open-city.github.com/dedupe/doc/mysql_example.html)
 """
 
 import os
@@ -28,7 +20,7 @@ import dedupe
 
 # Dedupe uses Python logging to show or suppress verbose output. Added
 # for convenience.  To enable verbose logging, run `python
-# examples/csv_example/csv_example.py -v`
+# patent_example.py -v`
 
 optp = optparse.OptionParser()
 optp.add_option('-v', '--verbose', dest='verbose', action='count',
@@ -45,8 +37,6 @@ logging.basicConfig(level=log_level)
 
 # ## Setup
 
-# Switch to our working directory and set up our input and out put paths,
-# as well as our settings and training file locations
 input_file = 'patstat_input.csv'
 output_file = 'patstat_output.csv'
 settings_file = 'patstat_settings.json'
@@ -70,18 +60,10 @@ def preProcess(column):
 
 def readData(filename, set_delim='**'):
     """
-    Read in our data from a CSV file and create a dictionary of records, 
-    where the key is a unique record ID and each value is a 
-    [frozendict](http://code.activestate.com/recipes/414283-frozen-dictionaries/) 
-    (hashable dictionary) of the row fields.
-
     Remap columns for the following cases:
     - Lat and Long are mapped into a single LatLong tuple
-    - Class and Coauthor are stored as delimited strings but mapped into sets
-
-    **Currently, dedupe depends upon records' unique ids being integers
-    with no integers skipped. The smallest valued unique id must be 0 or
-    1. Expect this requirement will likely be relaxed in the future.**
+    - Class and Coauthor are stored as delimited strings but mapped into 
+      frozensets
     """
 
     word_count = collections.defaultdict(int)
@@ -125,6 +107,8 @@ def readData(filename, set_delim='**'):
         
     return data_d
 
+# With this feature we are trying to control for the fact that
+# some inventors appear hundreds of times.
 def name_probability_log_odds(field_1, field_2) :
     phi = field_1 * field_2
     return math.log(phi/(1-phi))
@@ -132,6 +116,8 @@ def name_probability_log_odds(field_1, field_2) :
 print 'importing data ...'
 data_d = readData(input_file)
 
+# These two generators will give us the corpora setting up the Set
+# distance metrics
 def classes() :
     for record in data_d.itervalues() :
         yield record['Class']
@@ -177,11 +163,6 @@ else:
 
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
-    # __Note:__ if you want to train from scratch, delete the training_file
-    ## The json file is of the form:
-    ## {0: [[{field:val dict of record 1}, {field:val dict of record 2}], ...(more nonmatch pairs)]
-    ##  1: [[{field:val dict of record 1}, {field_val dict of record 2}], ...(more match pairs)]
-    ## }
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
         deduper.readTraining(training_file)
