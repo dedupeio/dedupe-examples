@@ -177,6 +177,66 @@ clustered_dupes = deduper.match(data_d, threshold)
 
 print '# duplicate sets', len(clustered_dupes)
 
+
+
+#Canonicalization###########################################################################
+
+# testing #####
+dupeCluster=clustered_dupes[0]
+
+# calculate centroid w/ affine gaps
+def getCentroid( stringList ):
+    n=len(stringList)
+    matrix=numpy.zeros((n,n))
+    avgdist=numpy.zeros(n)
+    #this is a matrix of distances between all strings
+    for i in range (1,n):
+        for j in range (0, i):
+            dist=comparator(stringList[i], stringList[j])
+            matrix[i][j]=dist
+            matrix[j][i]=dist
+    #find avg distance per string
+    for i in range (1,n):
+        avgdist[i]=numpy.mean(matrix[i])
+    #set centroid as string with min avg distance ##########################################
+    #what to do when there is a tie for shortest avg distance? #############################
+    #centroid = ############################################################################
+    return centroid
+
+# takes in a cluster of duplicates & data, returns canonical representation of cluster
+def getCanonicalRep( dupeCluster, data_d):
+    attributes=dict()
+    canonicalRep=dict()
+
+    #get attributes from data dictionary
+    for key in data_d[0].keys():
+        attributes[key]=[]
+        canonicalRep[key]=[]
+
+    #gather attribute values from all records in dupe cluster
+    for recordID in dupeCluster:
+        for key in data_d[recordID].keys():
+            if data_d[recordID][key] != '': # is this necessary? getCentroid should return '' if stringList is empty
+                attributes[key].append(data_d[recordID][key])
+
+    #find central attribute & set canonical representation
+    for key in attributes:
+        #get centroid
+        centroid = getCentroid(attributes[key])
+        canonicalRep[key]=centroid
+    return canonicalRep
+
+#this is the string distance calculation
+from dedupe.distance.affinegap import normalizedAffineGapDistance as comparator
+
+#call getCanonicalRep
+#getCanonicalRep(dupeCluster, data_d)
+
+#############################################################################################
+
+
+
+
 # ## Writing Results
 
 # Write our original data back out to a CSV with a new column called 
