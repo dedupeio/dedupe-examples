@@ -190,21 +190,34 @@ def getCentroid( attribute_variants, comparator ):
     n = len(attribute_variants) # *** if n = 0 (i.e. all values were empty & ignored), return ''
     dist_matrix = numpy.matlib.zeros([n,n])
     avg_dist = numpy.zeros(n)
-    #this is a matrix of distances between all strings
+    # this is a matrix of distances between all strings
+    # populate distance matrix by looping through elements of matrix triangle
     for i in range (1,n):
         for j in range (0, i):
             dist = comparator(attribute_variants[i], attribute_variants[j])
             dist_matrix[i,j] = dist
             dist_matrix[j,i] = dist
-    #find avg distance per string
+    # find avg distance per string
     for i in range (1,n):
         avg_dist = dist_matrix.mean(0)
-    #set centroid as string with min avg distance ##########################################
-    #what to do when there is a tie for shortest avg distance? #############################
-    #centroid = ############################################################################
-    return centroid
+    # find string with min avg distance
+    min_dist = avg_dist.argmin()
+    min_dist_indices = numpy.where(avg_dist==min_dist)
+    # if there is only one value w/ min avg dist
+    if len(min_dist_indices[0])==1:
+        centroid_index = min_dist_indices[0][0]
+        return attribute_variants[centroid_index]
+    # if there are multiple values w/ min avg dist
+    else:
+        return breakCentroidTie( attribute_variants, min_dist_indices ) # *** what should happen here with different data types?
+
+# find centroid when there are multiple values w/ min avg distance (e.g. any dupe cluster of 2)
+def breakCentroidTie( attribute_variants, min_dist_indices ): #################################
+###############################################################################################
+
 
 # takes in a cluster of duplicates & data, returns canonical representation of cluster
+# *** get this to take in data model, so that it knows data types, comparators
 def getCanonicalRep( dupe_cluster, data_d):
     keys = data_d[0].keys()
     canonical_rep = dict()
