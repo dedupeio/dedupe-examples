@@ -21,6 +21,7 @@ import collections
 import logging
 import optparse
 from numpy import nan
+from numpy import matlib
 
 import dedupe
 
@@ -182,22 +183,22 @@ print '# duplicate sets', len(clustered_dupes)
 #Canonicalization###########################################################################
 
 # testing #####
-dupeCluster=clustered_dupes[0]
+dupeCluster = clustered_dupes[0]
 
 # calculate centroid w/ affine gaps
-def getCentroid( stringList ):
-    n=len(stringList)
-    matrix=numpy.zeros((n,n))
-    avgdist=numpy.zeros(n)
+def getCentroid( attribute_variants ):
+    n = len(attribute_variants)
+    dist_matrix = numpy.matlib.zeros([n,n])
+    avgdist = numpy.zeros(n)
     #this is a matrix of distances between all strings
     for i in range (1,n):
         for j in range (0, i):
-            dist=comparator(stringList[i], stringList[j])
-            matrix[i][j]=dist
-            matrix[j][i]=dist
+            dist = comparator(attribute_variants[i], attribute_variants[j])
+            dist_matrix[i,j] = dist
+            dist_matrix[j,i] = dist
     #find avg distance per string
     for i in range (1,n):
-        avgdist[i]=numpy.mean(matrix[i])
+        avgdist = numpy.mean(dist_matrix)
     #set centroid as string with min avg distance ##########################################
     #what to do when there is a tie for shortest avg distance? #############################
     #centroid = ############################################################################
@@ -205,25 +206,25 @@ def getCentroid( stringList ):
 
 # takes in a cluster of duplicates & data, returns canonical representation of cluster
 def getCanonicalRep( dupeCluster, data_d):
-    attributes=dict()
-    canonicalRep=dict()
+    attributes = dict()
+    canonicalRep = dict()
 
     #get attributes from data dictionary
     for key in data_d[0].keys():
-        attributes[key]=[]
-        canonicalRep[key]=[]
+        attributes[key] = []
+        canonicalRep[key] = []
 
     #gather attribute values from all records in dupe cluster
     for recordID in dupeCluster:
         for key in data_d[recordID].keys():
-            if data_d[recordID][key] != '': # is this necessary? getCentroid should return '' if stringList is empty
+            if data_d[recordID][key] != '': # is this necessary? getCentroid should return '' if attribute_variants is empty
                 attributes[key].append(data_d[recordID][key])
 
     #find central attribute & set canonical representation
     for key in attributes:
         #get centroid
         centroid = getCentroid(attributes[key])
-        canonicalRep[key]=centroid
+        canonicalRep[key] = centroid
     return canonicalRep
 
 #this is the string distance calculation
