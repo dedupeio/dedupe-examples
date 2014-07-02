@@ -189,7 +189,7 @@ dupe_cluster = clustered_dupes[0]
 def getCentroid( attribute_variants, comparator ):
     n = len(attribute_variants) # *** if n = 0 (i.e. all values were empty & ignored), return ''
     dist_matrix = numpy.matlib.zeros([n,n])
-    avgdist = numpy.zeros(n)
+    avg_dist = numpy.zeros(n)
     #this is a matrix of distances between all strings
     for i in range (1,n):
         for j in range (0, i):
@@ -198,7 +198,7 @@ def getCentroid( attribute_variants, comparator ):
             dist_matrix[j,i] = dist
     #find avg distance per string
     for i in range (1,n):
-        avgdist = numpy.mean(dist_matrix)
+        avg_dist = dist_matrix.mean(0)
     #set centroid as string with min avg distance ##########################################
     #what to do when there is a tie for shortest avg distance? #############################
     #centroid = ############################################################################
