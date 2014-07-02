@@ -186,7 +186,7 @@ print '# duplicate sets', len(clustered_dupes)
 dupeCluster = clustered_dupes[0]
 
 # calculate centroid w/ affine gaps
-def getCentroid( attribute_variants ):
+def getCentroid( attribute_variants, comparator ):
     n = len(attribute_variants)
     dist_matrix = numpy.matlib.zeros([n,n])
     avgdist = numpy.zeros(n)
