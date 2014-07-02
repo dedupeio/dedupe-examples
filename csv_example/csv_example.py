@@ -183,11 +183,11 @@ print '# duplicate sets', len(clustered_dupes)
 #Canonicalization###########################################################################
 
 # testing #####
-dupeCluster = clustered_dupes[0]
+dupe_cluster = clustered_dupes[0]
 
 # calculate centroid w/ affine gaps
 def getCentroid( attribute_variants, comparator ):
-    n = len(attribute_variants)
+    n = len(attribute_variants) # *** if n = 0 (i.e. all values were empty & ignored), return ''
     dist_matrix = numpy.matlib.zeros([n,n])
     avgdist = numpy.zeros(n)
     #this is a matrix of distances between all strings
@@ -205,33 +205,25 @@ def getCentroid( attribute_variants, comparator ):
     return centroid
 
 # takes in a cluster of duplicates & data, returns canonical representation of cluster
-def getCanonicalRep( dupeCluster, data_d):
-    attributes = dict()
-    canonicalRep = dict()
+def getCanonicalRep( dupe_cluster, data_d):
+    keys = data_d[0].keys()
+    canonical_rep = dict()
 
-    #get attributes from data dictionary
-    for key in data_d[0].keys():
-        attributes[key] = []
-        canonicalRep[key] = []
-
-    #gather attribute values from all records in dupe cluster
-    for recordID in dupeCluster:
-        for key in data_d[recordID].keys():
-            if data_d[recordID][key] != '': # is this necessary? getCentroid should return '' if attribute_variants is empty
-                attributes[key].append(data_d[recordID][key])
-
-    #find central attribute & set canonical representation
-    for key in attributes:
-        #get centroid
-        centroid = getCentroid(attributes[key])
-        canonicalRep[key] = centroid
-    return canonicalRep
+    #loop through keys & values in data, get centroid for each key
+    for key in keys:
+        key_values = []
+        for record_id in dupe_cluster :
+            #ignore empty values (assume non-empty values always better than empty value for canonical record)
+            if data_d[record_id][key] != '':
+                key_values.append(data_d[record_id][key])
+        canonical_rep[key] = getCentroid(key_values) # *** add comparator
+    return canonical_rep
 
 #this is the string distance calculation
 from dedupe.distance.affinegap import normalizedAffineGapDistance as comparator
 
 #call getCanonicalRep
-#getCanonicalRep(dupeCluster, data_d)
+#getCanonicalRep(dupe_cluster, data_d)
 
 #############################################################################################
 
