@@ -191,7 +191,7 @@ print '# duplicate sets', len(clustered_dupes)
 
 cluster_membership = {}
 for (cluster_id, cluster) in enumerate(clustered_dupes):
-    canonical_rep = dedupe.centroid.getCanonicalRep (cluster, data_d, deduper.data_model)
+    canonical_rep = deduper.canonicalize (cluster, data_d)
     print canonical_rep
     for record_id in cluster:
         cluster_membership[record_id] = {"cluster id" : cluster_id, "canonical representation" : canonical_rep}
