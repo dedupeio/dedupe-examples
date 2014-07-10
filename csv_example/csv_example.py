@@ -20,9 +20,12 @@ import re
 import collections
 import logging
 import optparse
+import numpy as np
 from numpy import nan
+from numpy import matlib
 
 import dedupe
+import dedupe.centroid
 
 # ## Logging
 
@@ -177,29 +180,48 @@ clustered_dupes = deduper.match(data_d, threshold)
 
 print '# duplicate sets', len(clustered_dupes)
 
+
+
+
+
 # ## Writing Results
 
 # Write our original data back out to a CSV with a new column called 
 # 'Cluster ID' which indicates which records refer to each other.
 
-cluster_membership = collections.defaultdict(lambda : 'x')
+cluster_membership = {}
 for (cluster_id, cluster) in enumerate(clustered_dupes):
+    canonical_rep = deduper.canonicalize (cluster, data_d)
+    print canonical_rep
     for record_id in cluster:
-        cluster_membership[record_id] = cluster_id
+        cluster_membership[record_id] = {"cluster id" : cluster_id, "canonical representation" : canonical_rep}
 
 
-with open(output_file, 'w') as f:
-    writer = csv.writer(f)
+
+with open(output_file, 'w') as f_output:
+    writer = csv.writer(f_output)
 
     with open(input_file) as f_input :
         reader = csv.reader(f_input)
 
         heading_row = reader.next()
         heading_row.insert(0, 'Cluster ID')
+        canonical_keys = canonical_rep.keys()
+        for key in canonical_keys:
+            heading_row.append('canonical_' + key)
+
         writer.writerow(heading_row)
 
         for row in reader:
             row_id = int(row[0])
-            cluster_id = cluster_membership[row_id]
-            row.insert(0, cluster_id)
+            if row_id in cluster_membership:
+                cluster_id = cluster_membership[row_id]["cluster id"]
+                canonical_rep = cluster_membership[row_id]["canonical representation"]
+                row.insert(0, cluster_id)
+                for key in canonical_keys:
+                    row.append(canonical_rep[key])
+            else:
+                row.insert(0, None)
+                for key in canonical_keys:
+                    row.append(None)
             writer.writerow(row)
