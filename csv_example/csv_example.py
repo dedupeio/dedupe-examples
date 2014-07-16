@@ -20,7 +20,6 @@ import re
 import collections
 import logging
 import optparse
-import numpy as np
 from numpy import nan
 
 import dedupe
