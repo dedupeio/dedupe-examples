@@ -106,7 +106,8 @@ data_d = readData(input_file)
 
 if os.path.exists(settings_file):
     print 'reading from', settings_file
-    deduper = dedupe.StaticDedupe(settings_file)
+    with open(settings_file, 'rb') as f:
+        deduper = dedupe.StaticDedupe(f)
 
 else:
     # Define the fields dedupe will pay attention to
@@ -134,7 +135,8 @@ else:
     # __Note:__ if you want to train from scratch, delete the training_file
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
-        deduper.readTraining(training_file)
+        with open(training_file, 'rb') as f:
+            deduper.readTraining(f)
 
     # ## Active learning
     # Dedupe will find the next pair of records
@@ -191,10 +193,16 @@ print '# duplicate sets', len(clustered_dupes)
 
 cluster_membership = {}
 for (cluster_id, cluster) in enumerate(clustered_dupes):
-    canonical_rep = deduper.canonicalize (cluster, data_d)
+    id_set, conf_score = cluster
+    cluster_d = [data_d[c] for c in id_set]
+    canonical_rep = dedupe.canonicalize(cluster_d)
     print canonical_rep
-    for record_id in cluster:
-        cluster_membership[record_id] = {"cluster id" : cluster_id, "canonical representation" : canonical_rep}
+    for record_id in id_set:
+        cluster_membership[record_id] = {
+            "cluster id" : cluster_id,
+            "canonical representation" : canonical_rep,
+            "confidence": conf_score
+        }
 
 
 
@@ -209,7 +217,8 @@ with open(output_file, 'w') as f_output:
         canonical_keys = canonical_rep.keys()
         for key in canonical_keys:
             heading_row.append('canonical_' + key)
-
+        heading_row.append('confidence_score')
+        
         writer.writerow(heading_row)
 
         for row in reader:
@@ -220,8 +229,10 @@ with open(output_file, 'w') as f_output:
                 row.insert(0, cluster_id)
                 for key in canonical_keys:
                     row.append(canonical_rep[key])
+                row.append(cluster_membership[row_id]['confidence'])
             else:
                 row.insert(0, None)
                 for key in canonical_keys:
                     row.append(None)
+                row.append(None)
             writer.writerow(row)
