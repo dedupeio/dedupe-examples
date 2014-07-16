@@ -189,7 +189,6 @@ for (cluster_id, cluster) in enumerate(clustered_dupes):
     id_set, conf_score = cluster
     cluster_d = [data_d[c] for c in id_set]
     canonical_rep = dedupe.canonicalize(cluster_d)
-    print canonical_rep
     for record_id in id_set:
         cluster_membership[record_id] = {
             "cluster id" : cluster_id,
