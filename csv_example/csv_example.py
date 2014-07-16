@@ -22,10 +22,8 @@ import logging
 import optparse
 import numpy as np
 from numpy import nan
-from numpy import matlib
 
 import dedupe
-import dedupe.centroid
 
 # ## Logging
 
