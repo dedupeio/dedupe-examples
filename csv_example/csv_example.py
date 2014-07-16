@@ -179,10 +179,6 @@ clustered_dupes = deduper.match(data_d, threshold)
 
 print '# duplicate sets', len(clustered_dupes)
 
-
-
-
-
 # ## Writing Results
 
 # Write our original data back out to a CSV with a new column called 
