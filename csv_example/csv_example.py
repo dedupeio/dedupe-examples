@@ -148,12 +148,14 @@ else:
     deduper.train()
 
     # When finished, save our training away to disk
-    deduper.writeTraining(training_file)
+    with open(training_file, 'w') as tf :
+        deduper.writeTraining(tf)
 
     # Save our weights and predicates to disk.  If the settings file
     # exists, we will skip all the training and learning next time we run
     # this file.
-    deduper.writeSettings(settings_file)
+    with open(settings_file, 'w') as sf :
+        deduper.writeSettings(sf)
 
 
 # ## Blocking
