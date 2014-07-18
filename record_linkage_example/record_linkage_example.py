@@ -105,7 +105,8 @@ def descriptions() :
 
 if os.path.exists(settings_file):
     print 'reading from', settings_file
-    linker = dedupe.StaticRecordLink(settings_file)
+    with open(settings_file) as sf :
+        linker = dedupe.StaticRecordLink(sf)
 
 else:
     # Define the fields the linker will pay attention to
@@ -131,7 +132,8 @@ else:
     # __Note:__ if you want to train from scratch, delete the training_file
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
-        linker.readTraining(training_file)
+        with open(training_file) as tf :
+            linker.readTraining(tf)
 
     # ## Active learning
     # Dedupe will find the next pair of records
@@ -146,12 +148,14 @@ else:
     linker.train()
 
     # When finished, save our training away to disk
-    linker.writeTraining(training_file)
+    with open(training_file, 'w') as tf :
+        linker.writeTraining(tf)
 
     # Save our weights and predicates to disk.  If the settings file
     # exists, we will skip all the training and learning next time we run
     # this file.
-    linker.writeSettings(settings_file)
+    with open(settings_file, 'w') as sf :
+        linker.writeSettings(sf)
 
 
 # ## Blocking
@@ -180,29 +184,46 @@ print '# duplicate sets', len(linked_records)
 # Write our original data back out to a CSV with a new column called 
 # 'Cluster ID' which indicates which records refer to each other.
 
-cluster_membership = collections.defaultdict(lambda : 'x')
-
-for (cluster_id, cluster) in enumerate(linked_records):
+cluster_membership = {}
+cluster_id = None
+for cluster_id, (cluster, score) in enumerate(linked_records):
     for record_id in cluster:
-        cluster_membership[record_id] = cluster_id
+        cluster_membership[record_id] = (cluster_id, score)
 
-
+if cluster_id :
+    unique_id = cluster_id + 1
+else :
+    unique_id =0
+    
 
 with open(output_file, 'w') as f:
     writer = csv.writer(f)
+    
+    header_unwritten = True
 
     for fileno, filename in enumerate(('AbtBuy_Abt.csv', 'AbtBuy_Buy.csv')) :
-        row_id = 0
         with open(filename) as f_input :
             reader = csv.reader(f_input)
 
-            heading_row = reader.next()
-            heading_row.insert(0, 'source file')
-            heading_row.insert(0, 'Cluster ID')
-            writer.writerow(heading_row)
-            for row in reader:
-                cluster_id = cluster_membership[filename + str(row_id)]
+            if header_unwritten :
+                heading_row = reader.next()
+                heading_row.insert(0, 'source file')
+                heading_row.insert(0, 'Link Score')
+                heading_row.insert(0, 'Cluster ID')
+                writer.writerow(heading_row)
+                header_unwritten = False
+            else :
+                reader.next()
+
+            for row_id, row in enumerate(reader):
+                cluster_details = cluster_membership.get(filename + str(row_id))
+                if cluster_details is None :
+                    cluster_id = unique_id
+                    unique_id += 1
+                    score = None
+                else :
+                    cluster_id, score = cluster_details
                 row.insert(0, fileno)
+                row.insert(0, score)
                 row.insert(0, cluster_id)
                 writer.writerow(row)
-                row_id += 1
