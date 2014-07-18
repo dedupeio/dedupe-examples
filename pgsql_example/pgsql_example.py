@@ -63,7 +63,8 @@ for row in data:
 
 if os.path.exists(settings_file):
     print 'reading from', settings_file
-    deduper = dedupe.StaticDedupe(settings_file)
+    with open(settings_file) as sf :
+        deduper = dedupe.StaticDedupe(sf)
 
 else:
     fields = {
@@ -79,7 +80,8 @@ else:
 
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
-        deduper.readTraining(training_file)
+        with open(training_file) as tf :
+            deduper.readTraining(tf)
 
     print 'starting active labeling...'
 
@@ -87,9 +89,11 @@ else:
 
     deduper.train()
     
-    deduper.writeTraining(training_file)
+    with open(training_file, 'w') as tf :
+        deduper.writeTraining(tf)
 
-    deduper.writeSettings(settings_file)
+    with open(settings_file, 'w') as sf :
+        deduper.writeSettings(sf)
 
 print 'blocking...'
 
@@ -107,7 +111,7 @@ data = c2.fetchall()
 full_data = []
 
 cluster_membership = collections.defaultdict(lambda : 'x')
-for (cluster_id, cluster) in enumerate(clustered_dupes):
+for cluster_id, (cluster, score) in enumerate(clustered_dupes):
     for record_id in cluster:
         for row in data:
             if record_id == int(row[0]):
@@ -123,7 +127,8 @@ column_names = [x[0] for x in column_names]
 column_names.insert(0,'cluster_id')
 
 c2.execute('DROP TABLE IF EXISTS deduped_table')
-c2.execute('CREATE TABLE deduped_table (%s)'%','.join('%s varchar(200)' % name for name in column_names))
+field_string = ','.join('%s varchar(200)' % name for name in column_names)
+c2.execute('CREATE TABLE deduped_table (%s)' % field_string)
 con2.commit()
 
 num_cols = len(column_names)
