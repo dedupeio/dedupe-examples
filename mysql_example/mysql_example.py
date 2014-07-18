@@ -395,7 +395,7 @@ c.execute("DROP TABLE IF EXISTS entity_map")
 print 'creating entity_map database'
 c.execute("CREATE TABLE entity_map "
           "(donor_id INTEGER, canon_id INTEGER, "
-            "cluster_score FLOAT, PRIMARY KEY(donor_id))")
+          " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
 for cluster_id, (cluster, score) in enumerate(clustered_dupes) :
     for key in cluster :
