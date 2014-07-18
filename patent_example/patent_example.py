@@ -130,7 +130,8 @@ def coauthors() :
 
 if os.path.exists(settings_file):
     print 'reading from', settings_file
-    deduper = dedupe.StaticDedupe(settings_file)
+    with open(settings_file) as sf :
+        deduper = dedupe.StaticDedupe(sf)
 
 else:
     # Define the fields dedupe will pay attention to
@@ -165,7 +166,8 @@ else:
     # look for it an load it in.
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
-        deduper.readTraining(training_file)
+        with open(training_file) as tf :
+            deduper.readTraining(tf)
     # ## Active learning
 
     # Starts the training loop. Dedupe will find the next pair of records
@@ -180,12 +182,14 @@ else:
     deduper.train()
 
     # When finished, save our training away to disk
-    deduper.writeTraining(training_file)
+    with open(training_file, 'w') as tf :
+        deduper.writeTraining(tf)
 
     # Save our weights and predicates to disk.  If the settings file
     # exists, we will skip all the training and learning next time we run
     # this file.
-    deduper.writeSettings(settings_file)
+    with open(settings_file, 'w') as sf :
+        deduper.writeSettings(sf)
 
 threshold = deduper.threshold(data_d, recall_weight=4)
 
@@ -198,28 +202,35 @@ print '# duplicate sets', len(clustered_dupes)
 # Write our original data back out to a CSV with a new column called 
 # 'Cluster ID' which indicates which records refer to each other.
 
-cluster_membership = collections.defaultdict(lambda : 'x')
-for (cluster_id, cluster) in enumerate(clustered_dupes):
+cluster_membership = {}
+cluster_id = None
+for cluster_id, (cluster, score) in enumerate(clustered_dupes):
     for record_id in cluster:
-        cluster_membership[record_id] = cluster_id
+        cluster_membership[record_id] = (cluster_id, score)
 
+if cluster_id :
+    unique_id = cluster_id + 1
+else :
+    unique_id = 0
 
-with open(output_file, 'w') as f:
-    writer = csv.writer(f)
+with open(output_file, 'w') as f_out, open(input_file) as f_in :
+    writer = csv.writer(f_out)
 
-    with open(input_file, 'rt') as f_input :
-        reader = csv.reader(f_input)
+    reader = csv.reader(f_in)
 
-        heading_row = reader.next()
-        heading_row.insert(0, 'Cluster ID')
-        writer.writerow(heading_row)
+    heading_row = reader.next()
+    heading_row.insert(0, 'Score')
+    heading_row.insert(0, 'Cluster ID')
+    writer.writerow(heading_row)
 
-        for idx, row in enumerate(reader):
-            row_id = int(idx)
-            if row_id in cluster_membership:
-                cluster_id = cluster_membership[row_id]
-            else:
-                cluster_id = 'x'
-            row.insert(0, cluster_id)
-            writer.writerow(row)
+    for idx, row in enumerate(reader):
+        row_id = int(idx)
+        if row_id in cluster_membership:
+            cluser_id, score = cluster_membership[row_id]
+        else:
+            cluster_id, score = unique_id, None
+            unique_id += 1
+        row.insert(0, score)
+        row.insert(0, cluster_id)
+        writer.writerow(row)
 
