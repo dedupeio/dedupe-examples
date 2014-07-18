@@ -191,9 +191,9 @@ else:
     deduper.train(ppc=0.001, uncovered_dupes=5)
 
     # When finished, save our labeled, training pairs to disk
-    with open(training_file) as tf:
+    with open(training_file, 'w') as tf:
         deduper.writeTraining(tf)
-    with open(settings_file) as sf:
+    with open(settings_file, 'w') as sf:
         deduper.writeSettings(sf)
 
 ## Blocking
