@@ -195,7 +195,13 @@ else:
         deduper.writeTraining(tf)
     with open(settings_file, 'w') as sf:
         deduper.writeSettings(sf)
+<<<<<<< HEAD
  
+=======
+
+    deduper.cleanupTraining()
+
+>>>>>>> add cleanupTraining
 ## Blocking
 
 print 'blocking...'
