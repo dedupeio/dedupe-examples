@@ -195,7 +195,7 @@ else:
         deduper.writeTraining(tf)
     with open(settings_file, 'w') as sf:
         deduper.writeSettings(sf)
-
+ 
 ## Blocking
 
 print 'blocking...'
@@ -398,9 +398,9 @@ c.execute("CREATE TABLE entity_map "
           " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
 for cluster_id, (cluster, score) in enumerate(clustered_dupes) :
-    for key in cluster :
-        c.execute('INSERT INTO entity_map VALUES (%s, %s)',
-                  (cluster_id, cluster_head, score))
+    for donor_id in cluster :
+        c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
+                  (donor_id, cluster_id, score))
 
 con.commit()
 
