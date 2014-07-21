@@ -158,7 +158,7 @@ else:
     # scratch, delete the training_file
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
-        with open(training_file) :
+        with open(training_file) as tf :
             deduper.readTraining(tf)
 
     # ## Active learning
@@ -195,13 +195,9 @@ else:
         deduper.writeTraining(tf)
     with open(settings_file, 'w') as sf:
         deduper.writeSettings(sf)
-<<<<<<< HEAD
- 
-=======
 
     deduper.cleanupTraining()
 
->>>>>>> add cleanupTraining
 ## Blocking
 
 print 'blocking...'
@@ -403,8 +399,8 @@ c.execute("CREATE TABLE entity_map "
           "(donor_id INTEGER, canon_id INTEGER, "
           " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
-for cluster_id, (cluster, score) in enumerate(clustered_dupes) :
-    for donor_id in cluster :
+for cluster, score in clustered_dupes :
+    cluster_id = cluster[0]
         c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
                   (donor_id, cluster_id, score))
 
