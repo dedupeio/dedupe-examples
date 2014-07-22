@@ -196,7 +196,10 @@ else:
     with open(settings_file, 'w') as sf:
         deduper.writeSettings(sf)
 
+    # We can now remove some of the memory hobbing objects we used
+    # for training
     deduper.cleanupTraining()
+    del data_sample
 
 ## Blocking
 
