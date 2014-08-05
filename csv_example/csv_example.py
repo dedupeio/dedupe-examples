@@ -111,14 +111,12 @@ else:
     #
     # Notice how we are telling dedupe to use a custom field comparator
     # for the 'Zip' field. 
-    fields = {
-        'Site name': {'type': 'String'},
-        'Address': {'type': 'String'},
-        'Zip': {'type': 'Custom', 
-                'comparator' : sameOrNotComparator, 
-                'Has Missing' : True},
-        'Phone': {'type': 'String', 'Has Missing' : True},
-        }
+    fields = [
+        {'field' : 'Site name', 'type': 'String'},
+        {'field' : 'Address', 'type': 'String'},
+        {'field' : 'Zip', 'type': 'Exact', 'Has Missing' : True},
+        {'field' : 'Phone', 'type': 'String', 'Has Missing' : True},
+        ]
 
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields)
@@ -187,6 +185,7 @@ print '# duplicate sets', len(clustered_dupes)
 # 'Cluster ID' which indicates which records refer to each other.
 
 cluster_membership = {}
+cluster_id = 0
 for (cluster_id, cluster) in enumerate(clustered_dupes):
     id_set, conf_score = cluster
     cluster_d = [data_d[c] for c in id_set]
@@ -198,7 +197,7 @@ for (cluster_id, cluster) in enumerate(clustered_dupes):
             "confidence": conf_score
         }
 
-
+singleton_id = cluster_id + 1
 
 with open(output_file, 'w') as f_output:
     writer = csv.writer(f_output)
@@ -225,7 +224,8 @@ with open(output_file, 'w') as f_output:
                     row.append(canonical_rep[key])
                 row.append(cluster_membership[row_id]['confidence'])
             else:
-                row.insert(0, None)
+                row.insert(0, singleton_id)
+                singleton_id += 1
                 for key in canonical_keys:
                     row.append(None)
                 row.append(None)

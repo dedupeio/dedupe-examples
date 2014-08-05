@@ -135,33 +135,40 @@ if os.path.exists(settings_file):
 
 else:
     # Define the fields dedupe will pay attention to
-    fields = {
-        'Name': {'type': 'String', 'Has Missing':True},
-        'LatLong' : {'type' : 'LatLong', 'Has Missing' : True},
-        'Class': {'type': 'Set', 'corpus' : classes()},
-        'Coauthor': {'type': 'Set', 'corpus' : coauthors()},
-        'Name Probability' : {'type' : 'Custom', 
-                              'comparator' : name_probability_log_odds},
-        'Class-Odds' : {'type' : 'Interaction', 
-                        'Interaction Fields' : ['Name Probability', 
-                                                'Class']},
-        'Name-Odds' : {'type' : 'Interaction', 
-                       'Interaction Fields' : ['Name Probability', 
-                                                 'Name']},
-        'Coauthor-Odds' : {'type' : 'Interaction', 
-                           'Interaction Fields' : ['Name Probability', 
-                                                   'Coauthor']}
-
-
-        }
+    fields = [
+        {'field' : 'Name', 
+         'variable name' : 'Name',
+         'type': 'String', 
+         'Has Missing':True},
+        {'field' : 'LatLong','type' : 'LatLong', 'Has Missing' : True},
+        {'field' : 'Class', 
+         'variable name' : 'Class',
+         'type': 'Set', 
+         'corpus' : classes()},
+        {'field' : 'Coauthor', 
+         'variable name' : 'Coauthor',
+         'type': 'Set', 
+         'corpus' : coauthors()},
+        {'field' : 'Name Probability', 
+         'variable name' : 'NameProb',
+         'type' : 'Custom', 
+         'comparator' : name_probability_log_odds},
+        {'type' : 'Interaction', 
+         'Interaction Fields' : ['NameProb', 
+                                 'Class']},
+        {'type' : 'Interaction', 
+         'Interaction Fields' : ['NameProb', 
+                                 'Name']},
+        {'type' : 'Interaction', 
+         'Interaction Fields' : ['NameProb', 
+                                 'Coauthor']}
+    ]
 
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields)
 
     # To train dedupe, we feed it a random sample of records.
     deduper.sample(data_d, 60000)
-
-
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
     if os.path.exists(training_file):

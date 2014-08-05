@@ -113,14 +113,13 @@ else:
     #
     # Notice how we are telling the linker to use a custom field comparator
     # for the 'price' field. 
-    fields = {
-        'title': {'type': 'String'},
-        'description': {'type': 'Text',
-                        'Has Missing' :True,
-                        'corpus' : descriptions()},
-        'price': {'type' : 'Custom',
-                  'comparator' : comparePrice,
-                  'Has Missing' : True}}
+    fields = [
+        {'field' : 'title', 'type': 'String'},
+        {'field' : 'title', 'type': 'Text', 'corpus' : descriptions()},
+        {'field' : 'description', 'type': 'Text',
+         'Has Missing' :True, 'corpus' : descriptions()},
+        {'field' : 'price', 'type' : 'Custom',
+         'comparator' : comparePrice, 'Has Missing' : True}]
 
     # Create a new linker object and pass our data model to it.
     linker = dedupe.RecordLink(fields)
