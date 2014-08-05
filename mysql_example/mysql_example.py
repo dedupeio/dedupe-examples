@@ -135,18 +135,20 @@ else:
     # The address, city, and zip fields are often missing, so we'll
     # tell dedupe that, and we'll learn a model that take that into
     # account
-    fields = {'name': {'type': 'String'},
-              'address': {'type': 'String', 'Has Missing' : True},
-              'city': {'type': 'String', 'Has Missing' : True},
-              'state': {'type': 'String'},
-              'zip': {'type': 'String', 'Has Missing' : True},
-              'person' : {'type' : 'Categorical', 
-                          'Categories' : [0, 1]},
-              'person-address' : {'type' : 'Interaction',
-                                  'Interaction Fields' : ['person', 'address']},
-              'name-address' : {'type' : 'Interaction', 
-                                'Interaction Fields' : ['name', 'address']}
-              }
+    fields = [{'field' : 'name', 'variable name' : 'name',
+               'type': 'String'},
+              {'field' : 'address', 'type': 'String', 
+               'variable name' : 'address', 'Has Missing' : True},
+              {'field' : 'city', 'type': 'String', 'Has Missing' : True},
+              {'field' : 'state', 'type': 'String'},
+              {'field' : 'zip', 'type': 'String', 'Has Missing' : True},
+              {'field' : 'person', 'variable name' : 'person',
+               'type' : 'Categorical', 'Categories' : [0, 1]},
+              {'type' : 'Interaction',
+               'Interaction Fields' : ['person', 'address']},
+              {'type' : 'Interaction', 
+               'Interaction Fields' : ['name', 'address']}
+              ]
 
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields, data_sample, num_processes=4)
