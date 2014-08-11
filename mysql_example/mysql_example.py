@@ -119,7 +119,8 @@ def getSample(cur, sample_size, id_column, table):
 
 if os.path.exists(settings_file):
     print 'reading from ', settings_file
-    deduper = dedupe.StaticDedupe(settings_file, num_processes=4)
+    with open(settings_file) as sf :
+        deduper = dedupe.StaticDedupe(sf, num_processes=4)
 else:
 
     # Select a large sample of duplicate pairs.  As the dataset grows,
@@ -134,18 +135,20 @@ else:
     # The address, city, and zip fields are often missing, so we'll
     # tell dedupe that, and we'll learn a model that take that into
     # account
-    fields = {'name': {'type': 'String'},
-              'address': {'type': 'String', 'Has Missing' : True},
-              'city': {'type': 'String', 'Has Missing' : True},
-              'state': {'type': 'String'},
-              'zip': {'type': 'String', 'Has Missing' : True},
-              'person' : {'type' : 'Categorical', 
-                          'Categories' : [0, 1]},
-              'person-address' : {'type' : 'Interaction',
-                                  'Interaction Fields' : ['person', 'address']},
-              'name-address' : {'type' : 'Interaction', 
-                                'Interaction Fields' : ['name', 'address']}
-              }
+    fields = [{'field' : 'name', 'variable name' : 'name',
+               'type': 'String'},
+              {'field' : 'address', 'type': 'String', 
+               'variable name' : 'address', 'has missing' : True},
+              {'field' : 'city', 'type': 'String', 'has missing' : True},
+              {'field' : 'state', 'type': 'String'},
+              {'field' : 'zip', 'type': 'String', 'has missing' : True},
+              {'field' : 'person', 'variable name' : 'person',
+               'type' : 'Categorical', 'categories' : [0, 1]},
+              {'type' : 'Interaction',
+               'interaction variables' : ['person', 'address']},
+              {'type' : 'Interaction', 
+               'interaction variables' : ['name', 'address']}
+              ]
 
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields, data_sample, num_processes=4)
@@ -157,7 +160,8 @@ else:
     # scratch, delete the training_file
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
-        deduper.readTraining(training_file)
+        with open(training_file) as tf :
+            deduper.readTraining(tf)
 
     # ## Active learning
 
@@ -189,8 +193,15 @@ else:
     deduper.train(ppc=0.001, uncovered_dupes=5)
 
     # When finished, save our labeled, training pairs to disk
-    deduper.writeTraining(training_file)
-    deduper.writeSettings(settings_file)
+    with open(training_file, 'w') as tf:
+        deduper.writeTraining(tf)
+    with open(settings_file, 'w') as sf:
+        deduper.writeSettings(sf)
+
+    # We can now remove some of the memory hobbing objects we used
+    # for training
+    deduper.cleanupTraining()
+    del data_sample
 
 ## Blocking
 
@@ -375,8 +386,6 @@ c.execute("SELECT donor_id, city, name, "
           "USING (donor_id) "
           "ORDER BY (block_id)")
 
-print c.next()
-
 print 'clustering...'
 clustered_dupes = deduper.matchBlocks(candidates_gen(c),
                                       threshold=0.5)
@@ -390,15 +399,14 @@ c.execute("DROP TABLE IF EXISTS entity_map")
 
 print 'creating entity_map database'
 c.execute("CREATE TABLE entity_map "
-          "(donor_id INTEGER, canon_id INTEGER, PRIMARY KEY(donor_id))")
+          "(donor_id INTEGER, canon_id INTEGER, "
+          " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
-for cluster in clustered_dupes :
-    cluster_head = str(cluster.pop())
-    c.execute('INSERT INTO entity_map VALUES (%s, %s)',
-                (cluster_head, cluster_head))
-    for key in cluster :
-        c.execute('INSERT INTO entity_map VALUES (%s, %s)',
-                    (str(key), cluster_head))
+for cluster, score in clustered_dupes :
+    cluster_id = cluster[0]
+    for donor_id in cluster :
+        c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
+                  (donor_id, cluster_id, score))
 
 con.commit()
 

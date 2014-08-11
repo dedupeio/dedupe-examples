@@ -103,21 +103,20 @@ data_d = readData(input_file)
 
 if os.path.exists(settings_file):
     print 'reading from', settings_file
-    deduper = dedupe.StaticDedupe(settings_file)
+    with open(settings_file, 'rb') as f:
+        deduper = dedupe.StaticDedupe(f)
 
 else:
     # Define the fields dedupe will pay attention to
     #
     # Notice how we are telling dedupe to use a custom field comparator
     # for the 'Zip' field. 
-    fields = {
-        'Site name': {'type': 'String'},
-        'Address': {'type': 'String'},
-        'Zip': {'type': 'Custom', 
-                'comparator' : sameOrNotComparator, 
-                'Has Missing' : True},
-        'Phone': {'type': 'String', 'Has Missing' : True},
-        }
+    fields = [
+        {'field' : 'Site name', 'type': 'String'},
+        {'field' : 'Address', 'type': 'String'},
+        {'field' : 'Zip', 'type': 'Exact', 'has missing' : True},
+        {'field' : 'Phone', 'type': 'String', 'has missing' : True},
+        ]
 
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields)
@@ -131,7 +130,8 @@ else:
     # __Note:__ if you want to train from scratch, delete the training_file
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
-        deduper.readTraining(training_file)
+        with open(training_file, 'rb') as f:
+            deduper.readTraining(f)
 
     # ## Active learning
     # Dedupe will find the next pair of records
@@ -146,12 +146,14 @@ else:
     deduper.train()
 
     # When finished, save our training away to disk
-    deduper.writeTraining(training_file)
+    with open(training_file, 'w') as tf :
+        deduper.writeTraining(tf)
 
     # Save our weights and predicates to disk.  If the settings file
     # exists, we will skip all the training and learning next time we run
     # this file.
-    deduper.writeSettings(settings_file)
+    with open(settings_file, 'w') as sf :
+        deduper.writeSettings(sf)
 
 
 # ## Blocking
@@ -182,24 +184,49 @@ print '# duplicate sets', len(clustered_dupes)
 # Write our original data back out to a CSV with a new column called 
 # 'Cluster ID' which indicates which records refer to each other.
 
-cluster_membership = collections.defaultdict(lambda : 'x')
+cluster_membership = {}
+cluster_id = 0
 for (cluster_id, cluster) in enumerate(clustered_dupes):
-    for record_id in cluster:
-        cluster_membership[record_id] = cluster_id
+    id_set, conf_score = cluster
+    cluster_d = [data_d[c] for c in id_set]
+    canonical_rep = dedupe.canonicalize(cluster_d)
+    for record_id in id_set:
+        cluster_membership[record_id] = {
+            "cluster id" : cluster_id,
+            "canonical representation" : canonical_rep,
+            "confidence": conf_score
+        }
 
+singleton_id = cluster_id + 1
 
-with open(output_file, 'w') as f:
-    writer = csv.writer(f)
+with open(output_file, 'w') as f_output:
+    writer = csv.writer(f_output)
 
     with open(input_file) as f_input :
         reader = csv.reader(f_input)
 
         heading_row = reader.next()
         heading_row.insert(0, 'Cluster ID')
+        canonical_keys = canonical_rep.keys()
+        for key in canonical_keys:
+            heading_row.append('canonical_' + key)
+        heading_row.append('confidence_score')
+        
         writer.writerow(heading_row)
 
         for row in reader:
             row_id = int(row[0])
-            cluster_id = cluster_membership[row_id]
-            row.insert(0, cluster_id)
+            if row_id in cluster_membership:
+                cluster_id = cluster_membership[row_id]["cluster id"]
+                canonical_rep = cluster_membership[row_id]["canonical representation"]
+                row.insert(0, cluster_id)
+                for key in canonical_keys:
+                    row.append(canonical_rep[key])
+                row.append(cluster_membership[row_id]['confidence'])
+            else:
+                row.insert(0, singleton_id)
+                singleton_id += 1
+                for key in canonical_keys:
+                    row.append(None)
+                row.append(None)
             writer.writerow(row)
