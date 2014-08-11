@@ -67,12 +67,12 @@ if os.path.exists(settings_file):
         deduper = dedupe.StaticDedupe(sf)
 
 else:
-    fields = {
-        'site_name': {'type': 'String'},
-        'address': {'type': 'String'},
-        'zip': {'type': 'String', 'Has Missing' : True},
-        'phone': {'type': 'String', 'Has Missing' : True},
-        }
+    fields = [
+        {'field' : 'site_name', 'type': 'String'},
+        {'field' : 'address', 'type': 'String'},
+        {'field' : 'zip', 'type': 'String', 'has missing' : True},
+        {'field' : 'phone', 'type': 'String', 'has missing' : True},
+        ]
 
     deduper = dedupe.Dedupe(fields)
 

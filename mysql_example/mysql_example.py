@@ -138,16 +138,16 @@ else:
     fields = [{'field' : 'name', 'variable name' : 'name',
                'type': 'String'},
               {'field' : 'address', 'type': 'String', 
-               'variable name' : 'address', 'Has Missing' : True},
-              {'field' : 'city', 'type': 'String', 'Has Missing' : True},
+               'variable name' : 'address', 'has missing' : True},
+              {'field' : 'city', 'type': 'String', 'has missing' : True},
               {'field' : 'state', 'type': 'String'},
-              {'field' : 'zip', 'type': 'String', 'Has Missing' : True},
+              {'field' : 'zip', 'type': 'String', 'has missing' : True},
               {'field' : 'person', 'variable name' : 'person',
-               'type' : 'Categorical', 'Categories' : [0, 1]},
+               'type' : 'Categorical', 'categories' : [0, 1]},
               {'type' : 'Interaction',
-               'Interaction Fields' : ['person', 'address']},
+               'interaction variables' : ['person', 'address']},
               {'type' : 'Interaction', 
-               'Interaction Fields' : ['name', 'address']}
+               'interaction variables' : ['name', 'address']}
               ]
 
     # Create a new deduper object and pass our data model to it.
@@ -385,8 +385,6 @@ c.execute("SELECT donor_id, city, name, "
           "INNER JOIN processed_donors "
           "USING (donor_id) "
           "ORDER BY (block_id)")
-
-print c.next()
 
 print 'clustering...'
 clustered_dupes = deduper.matchBlocks(candidates_gen(c),

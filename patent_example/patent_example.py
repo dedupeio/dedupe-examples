@@ -139,8 +139,8 @@ else:
         {'field' : 'Name', 
          'variable name' : 'Name',
          'type': 'String', 
-         'Has Missing':True},
-        {'field' : 'LatLong','type' : 'LatLong', 'Has Missing' : True},
+         'has missing':True},
+        {'field' : 'LatLong','type' : 'LatLong', 'has missing' : True},
         {'field' : 'Class', 
          'variable name' : 'Class',
          'type': 'Set', 
@@ -154,14 +154,14 @@ else:
          'type' : 'Custom', 
          'comparator' : name_probability_log_odds},
         {'type' : 'Interaction', 
-         'Interaction Fields' : ['NameProb', 
-                                 'Class']},
+         'interaction variables' : ['NameProb', 
+                                    'Class']},
         {'type' : 'Interaction', 
-         'Interaction Fields' : ['NameProb', 
-                                 'Name']},
+         'interaction variables' : ['NameProb', 
+                                   'Name']},
         {'type' : 'Interaction', 
-         'Interaction Fields' : ['NameProb', 
-                                 'Coauthor']}
+         'interaction variables' : ['NameProb', 
+                                    'Coauthor']}
     ]
 
     # Create a new deduper object and pass our data model to it.

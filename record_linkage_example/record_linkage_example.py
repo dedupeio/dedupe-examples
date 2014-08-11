@@ -117,9 +117,9 @@ else:
         {'field' : 'title', 'type': 'String'},
         {'field' : 'title', 'type': 'Text', 'corpus' : descriptions()},
         {'field' : 'description', 'type': 'Text',
-         'Has Missing' :True, 'corpus' : descriptions()},
+         'has missing' : True, 'corpus' : descriptions()},
         {'field' : 'price', 'type' : 'Custom',
-         'comparator' : comparePrice, 'Has Missing' : True}]
+         'comparator' : comparePrice, 'has missing' : True}]
 
     # Create a new linker object and pass our data model to it.
     linker = dedupe.RecordLink(fields)

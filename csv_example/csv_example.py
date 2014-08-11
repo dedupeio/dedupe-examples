@@ -114,8 +114,8 @@ else:
     fields = [
         {'field' : 'Site name', 'type': 'String'},
         {'field' : 'Address', 'type': 'String'},
-        {'field' : 'Zip', 'type': 'Exact', 'Has Missing' : True},
-        {'field' : 'Phone', 'type': 'String', 'Has Missing' : True},
+        {'field' : 'Zip', 'type': 'Exact', 'has missing' : True},
+        {'field' : 'Phone', 'type': 'String', 'has missing' : True},
         ]
 
     # Create a new deduper object and pass our data model to it.
