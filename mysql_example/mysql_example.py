@@ -94,25 +94,22 @@ def getSample(cur, sample_size, id_column, table):
     '''
 
     cur.execute("SELECT MAX(%s) FROM %s" % (id_column, table))
-    num_records = cur.fetchone().values()[0]
-
-    cur.fetchall()
-
+    num_records = cur.fetchall()[0].values()[0]
+    
     random_pairs = dedupe.randomPairs(num_records,
-                                      sample_size) 
-    random_pairs += 1
+                                      sample_size)
 
     temp_d = {}
 
     cur.execute(DONOR_SELECT)
-    for row in cur :
-        temp_d[int(row[id_column])] = dedupe.core.frozendict(row)
 
-    def random_pair_generator():
-        for k1, k2 in random_pairs:
-            yield (temp_d[k1], temp_d[k2])
+    for i, row in enumerate(cur) :
+        temp_d[i] = dedupe.core.frozendict(row)
 
-    return tuple(pair for pair in random_pair_generator())
+    pair_sample = [(temp_d[k1], temp_d[k2])
+                   for k1, k2 in random_pairs]
+
+    return pair_sample
 
 
 # ## Training
@@ -120,7 +117,7 @@ def getSample(cur, sample_size, id_column, table):
 if os.path.exists(settings_file):
     print 'reading from ', settings_file
     with open(settings_file) as sf :
-        deduper = dedupe.StaticDedupe(sf, num_processes=4)
+        deduper = dedupe.StaticDedupe(sf, num_cores=4)
 else:
 
     # Select a large sample of duplicate pairs.  As the dataset grows,
@@ -151,7 +148,7 @@ else:
               ]
 
     # Create a new deduper object and pass our data model to it.
-    deduper = dedupe.Dedupe(fields, data_sample, num_processes=4)
+    deduper = dedupe.Dedupe(fields, data_sample, num_cores=4)
 
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
