@@ -127,7 +127,7 @@ else:
     # duplicate pairs become relatively more rare so we have to take a
     # fairly large sample compared to `csv_example.py`
     print 'selecting random sample from donors table...'
-    data_sample = getSample(c, 750000, 'donor_id', 'donors')
+    data_sample = getSample(c, 750000, 'donor_id', 'processed_donors')
 
 
     # Define the fields dedupe will pay attention to
