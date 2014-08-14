@@ -98,13 +98,12 @@ def getSample(cur, sample_size, id_column, table):
     
     random_pairs = dedupe.randomPairs(num_records,
                                       sample_size)
-
     temp_d = {}
 
     cur.execute(DONOR_SELECT)
 
     for i, row in enumerate(cur) :
-        temp_d[i] = dedupe.core.frozendict(row)
+        temp_d[i] = dedupe.frozendict(row)
 
     pair_sample = [(temp_d[k1], temp_d[k2])
                    for k1, k2 in random_pairs]
@@ -344,7 +343,6 @@ con.commit()
 ## Clustering
 
 def candidates_gen(result_set) :
-    split = str.split
     lset = set
 
     block_id = None
@@ -366,7 +364,7 @@ def candidates_gen(result_set) :
         smaller_ids = row['smaller_ids']
         
         if smaller_ids :
-            smaller_ids = lset(split(smaller_ids, ','))
+            smaller_ids = lset(smaller_ids.split(','))
         else :
             smaller_ids = lset([])
             
