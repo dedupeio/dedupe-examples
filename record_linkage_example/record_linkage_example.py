@@ -18,6 +18,7 @@ import optparse
 import numpy
 
 import dedupe
+from unidecode import unidecode
 
 # ## Logging
 
@@ -52,13 +53,11 @@ def comparePrice(price_1, price_2) :
 
 def preProcess(column):
     """
-    Do a little bit of data cleaning with the help of
-    [AsciiDammit](https://github.com/tnajdek/ASCII--Dammit) and
-    Regex. Things like cases, extra spaces, quotes and new lines can
-    be ignored.
+    Do a little bit of data cleaning with the help of Unidecode and Regex.
+    Things like casing, extra spaces, quotes and new lines can be ignored.
     """
 
-    column = dedupe.asciiDammit(column)
+    column = unidecode(column)
     column = re.sub('\n', ' ', column)
     column = re.sub('-', '', column)
     column = re.sub('/', ' ', column)
