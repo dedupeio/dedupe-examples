@@ -19,6 +19,7 @@ import optparse
 
 import psycopg2 as psy
 import psycopg2.extras
+from unidecode import unidecode
 
 optp = optparse.OptionParser()
 optp.add_option('-v', '--verbose', dest='verbose', action='count',
@@ -46,7 +47,7 @@ c = con.cursor(cursor_factory=psy.extras.RealDictCursor)
 MAILING_SELECT = 'SELECT id,site_name, address, zip, phone FROM csv_messy_data'
 
 def preProcess(column):
-    column = dedupe.asciiDammit(column)
+    column = unidecode(column)
     column = re.sub('  +', ' ', column)
     column = re.sub('\n', ' ', column)
     column = column.strip().strip('"').strip("'").lower().strip()
