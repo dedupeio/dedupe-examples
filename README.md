@@ -46,6 +46,28 @@ python mysql_example.py
 
 **To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](http://datamade.github.com/dedupe/doc/mysql_example.html).** 
 
+
+### [PostgreSQL big dedupe example](http://datamade.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset
+
+This is the same example as the MySQL IL campaign contributions dataset above, but ported to run on PostgreSQL.
+
+To follow this example you need to:
+
+* Create a PostgreSQL database
+* `easy_install psycopg2` or `pip install psycopg2`
+* `easy_install dj-database-url` or `pip install dj-database-url`
+* Set an environment variable with your PostgreSQL connection details: `export DATABASE_URL=postgres://user:password@host/mydatabase`
+
+Once that's all done you can run the example:
+
+```bash
+cd pgsql_big_dedupe_example
+python pgsql_big_dedupe_example_init_db.py 
+python pgsql_big_dedupe_example.py
+```
+  (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished) 
+
+
 ## Training
 
 The _secret sauce_ of dedupe is human input. In order to figure out the best rules to deduplicate a set of data, you must give it a set of labeled examples to learn from. 
