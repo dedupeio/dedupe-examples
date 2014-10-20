@@ -1,1 +1,2 @@
 dj-database-url>=0.3.0
+psycopg2==2.5.4
