@@ -105,6 +105,7 @@ def getSample(cur, sample_size, id_column, table):
     for i, row in enumerate(cur) :
         temp_d[i] = dedupe.frozendict(row)
 
+
     pair_sample = [(temp_d[k1], temp_d[k2])
                    for k1, k2 in random_pairs]
 
@@ -123,8 +124,6 @@ else:
     # duplicate pairs become relatively more rare so we have to take a
     # fairly large sample compared to `csv_example.py`
     print 'selecting random sample from donors table...'
-    data_sample = getSample(c, 750000, 'donor_id', 'processed_donors')
-
 
     # Define the fields dedupe will pay attention to
     #
@@ -147,7 +146,18 @@ else:
               ]
 
     # Create a new deduper object and pass our data model to it.
-    deduper = dedupe.Dedupe(fields, data_sample, num_cores=4)
+    deduper = dedupe.Dedupe(fields, num_cores=4)
+
+    temp_d = {}
+
+    c.execute(DONOR_SELECT)
+
+    for i, row in enumerate(c) :
+        temp_d[i] = dedupe.frozendict(row)
+
+    deduper.sample(temp_d, 75000, indexed=True)
+    del temp_d
+
 
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
@@ -197,7 +207,6 @@ else:
     # We can now remove some of the memory hobbing objects we used
     # for training
     deduper.cleanupTraining()
-    del data_sample
 
 ## Blocking
 
