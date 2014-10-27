@@ -87,31 +87,6 @@ DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address, " \
                "occupation, employer, person from processed_donors"
 
 
-def getSample(cur, sample_size, id_column, table):
-    '''
-    Returns a random sample of a given size of records pairs from a given
-    MySQL table.
-    '''
-
-    cur.execute("SELECT MAX(%s) FROM %s" % (id_column, table))
-    num_records = cur.fetchall()[0].values()[0]
-    
-    random_pairs = dedupe.randomPairs(num_records,
-                                      sample_size)
-    temp_d = {}
-
-    cur.execute(DONOR_SELECT)
-
-    for i, row in enumerate(cur) :
-        temp_d[i] = dedupe.frozendict(row)
-
-
-    pair_sample = [(temp_d[k1], temp_d[k2])
-                   for k1, k2 in random_pairs]
-
-    return pair_sample
-
-
 # ## Training
 
 if os.path.exists(settings_file):
