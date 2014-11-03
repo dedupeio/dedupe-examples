@@ -120,10 +120,9 @@ else:
 
     # We will sample pairs from the entire donor table for training
     c.execute(DONOR_SELECT)
-    temp_d = dict((i, row) for i, row in enumerate(c))
+    temp_d = dict((i, dedupe.frozendict(row)) for i, row in enumerate(c))
 
     deduper.sample(temp_d, 75000)
-    del temp_d
 
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
