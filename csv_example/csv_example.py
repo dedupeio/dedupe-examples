@@ -71,7 +71,7 @@ def preProcess(column):
     Things like casing, extra spaces, quotes and new lines can be ignored.
     """
 
-    column = unidecode(column)
+    column = column.decode("utf8")
     column = re.sub('  +', ' ', column)
     column = re.sub('\n', ' ', column)
     column = column.strip().strip('"').strip("'").lower().strip()
@@ -120,7 +120,7 @@ else:
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields)
 
-    # To train dedupe, we feed it a random sample of records.
+    # To train dedupe, we feed it a sample of records.
     deduper.sample(data_d, 150000)
 
 
@@ -215,12 +215,12 @@ with open(output_file, 'w') as f_output:
 
         for row in reader:
             row_id = int(row[0])
-            if row_id in cluster_membership:
+            if row_id in cluster_membership :
                 cluster_id = cluster_membership[row_id]["cluster id"]
                 canonical_rep = cluster_membership[row_id]["canonical representation"]
                 row.insert(0, cluster_id)
                 for key in canonical_keys:
-                    row.append(canonical_rep[key])
+                    row.append(canonical_rep[key].encode('utf8'))
                 row.append(cluster_membership[row_id]['confidence'])
             else:
                 row.insert(0, singleton_id)

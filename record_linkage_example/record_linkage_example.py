@@ -122,7 +122,7 @@ else:
 
     # Create a new linker object and pass our data model to it.
     linker = dedupe.RecordLink(fields)
-    # To train the linker, we feed it a random sample of records.
+    # To train the linker, we feed it a sample of records.
     linker.sample(data_1, data_2, 150000)
 
     # If we have training data saved from a previous run of linker,
@@ -167,13 +167,8 @@ else:
 # If we had more data, we would not pass in all the blocked data into
 # this function but a representative sample.
 
-threshold = linker.threshold(data_1, data_2, recall_weight=2)
-
-# `match` will return sets of record IDs that dedupe
-# believes are all referring to the same entity.
-
 print 'clustering...'
-linked_records = linker.match(data_1, data_2, threshold)
+linked_records = linker.match(data_1, data_2, 0)
 
 print '# duplicate sets', len(linked_records)
 

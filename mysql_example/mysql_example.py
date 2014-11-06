@@ -63,14 +63,14 @@ start_time = time.time()
 # We use Server Side cursors (SSDictCursor and SSCursor) to [avoid
 # having to have enormous result sets in memory](http://stackoverflow.com/questions/1808150/how-to-efficiently-use-mysqldb-sscursor).
 con = MySQLdb.connect(db='contributions',
-                      charset='ascii',
+                      #charset='utf8',
                       read_default_file = MYSQL_CNF, 
                       cursorclass=MySQLdb.cursors.SSDictCursor)
 c = con.cursor()
 c.execute("SET net_write_timeout = 3600")
 
 con2 = MySQLdb.connect(db='contributions',
-                       charset='ascii',
+                       #charset='utf8',
                        read_default_file = MYSQL_CNF, 
                        cursorclass=MySQLdb.cursors.SSCursor)
 c2 = con2.cursor()
@@ -86,31 +86,6 @@ c2.execute("SET net_write_timeout = 3600")
 DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address, " \
                "occupation, employer, person from processed_donors"
 
-
-def getSample(cur, sample_size, id_column, table):
-    '''
-    Returns a random sample of a given size of records pairs from a given
-    MySQL table.
-    '''
-
-    cur.execute("SELECT MAX(%s) FROM %s" % (id_column, table))
-    num_records = cur.fetchall()[0].values()[0]
-    
-    random_pairs = dedupe.randomPairs(num_records,
-                                      sample_size)
-    temp_d = {}
-
-    cur.execute(DONOR_SELECT)
-
-    for i, row in enumerate(cur) :
-        temp_d[i] = dedupe.frozendict(row)
-
-    pair_sample = [(temp_d[k1], temp_d[k2])
-                   for k1, k2 in random_pairs]
-
-    return pair_sample
-
-
 # ## Training
 
 if os.path.exists(settings_file):
@@ -118,13 +93,6 @@ if os.path.exists(settings_file):
     with open(settings_file) as sf :
         deduper = dedupe.StaticDedupe(sf, num_cores=4)
 else:
-
-    # Select a large sample of duplicate pairs.  As the dataset grows,
-    # duplicate pairs become relatively more rare so we have to take a
-    # fairly large sample compared to `csv_example.py`
-    print 'selecting random sample from donors table...'
-    data_sample = getSample(c, 750000, 'donor_id', 'processed_donors')
-
 
     # Define the fields dedupe will pay attention to
     #
@@ -147,7 +115,14 @@ else:
               ]
 
     # Create a new deduper object and pass our data model to it.
-    deduper = dedupe.Dedupe(fields, data_sample, num_cores=4)
+    deduper = dedupe.Dedupe(fields, num_cores=4)
+
+    # We will sample pairs from the entire donor table for training
+    c.execute(DONOR_SELECT)
+    temp_d = dict((i, row) for i, row in enumerate(c))
+
+    deduper.sample(temp_d, 75000)
+    del temp_d
 
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
@@ -197,7 +172,6 @@ else:
     # We can now remove some of the memory hobbing objects we used
     # for training
     deduper.cleanupTraining()
-    del data_sample
 
 ## Blocking
 
@@ -240,7 +214,7 @@ step_size = 30000
 # parallel database writers
 def dbWriter(sql, rows) :
     conn = MySQLdb.connect(db='contributions',
-                           charset='ascii',
+                           charset='utf8',
                            read_default_file = MYSQL_CNF) 
 
     cursor = conn.cursor()
