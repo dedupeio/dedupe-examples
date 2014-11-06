@@ -88,39 +88,6 @@ con2 = psycopg2.connect(database=db_conf['NAME'],
 DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address, " \
                "occupation, employer, person from processed_donors"
 
-
-def getSample(con, sample_size, id_column, table):
-    '''
-    Returns a random sample of a given size of records pairs from a given
-    PostgresSQL table.
-    '''
-    cur = con.cursor()
-
-    cur.execute("SELECT MAX(%s) FROM %s" % (id_column, table))
-    num_records = cur.fetchall()[0].values()[0]
-
-    cur.close()
-
-    random_pairs = dedupe.randomPairs(num_records,
-                                      sample_size)
-    temp_d = {}
-
-    # Named cursor runs server side with psycopg2
-    cur = con.cursor('donor_select')
-
-    cur.execute(DONOR_SELECT)
-
-    for i, row in enumerate(cur):
-        temp_d[i] = dedupe.frozendict(row)
-
-    cur.close()
-
-    pair_sample = [(temp_d[k1], temp_d[k2])
-                   for k1, k2 in random_pairs]
-
-    return pair_sample
-
-
 # ## Training
 
 if os.path.exists(settings_file):
@@ -128,12 +95,6 @@ if os.path.exists(settings_file):
     with open(settings_file) as sf:
         deduper = dedupe.StaticDedupe(sf, num_cores=4)
 else:
-
-    # Select a large sample of duplicate pairs.  As the dataset grows,
-    # duplicate pairs become relatively more rare so we have to take a
-    # fairly large sample compared to `csv_example.py`
-    print 'selecting random sample from donors table...'
-    data_sample = getSample(con, 1000000, 'donor_id', 'processed_donors')
 
     # Define the fields dedupe will pay attention to
     #
@@ -157,6 +118,15 @@ else:
 
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields, data_sample, num_cores=4)
+
+    # Named cursor runs server side with psycopg2
+    cur = con.cursor('donor_select')
+
+    cur.execute(DONOR_SELECT)
+    temp_d = dict((i, row) for i, row in enumerate(c))
+
+    deduper.sample(temp_d, 75000)
+    del temp_d
 
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
