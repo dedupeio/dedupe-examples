@@ -310,8 +310,8 @@ c.execute("CREATE UNIQUE INDEX plural_block_block_id_donor_id_uniq "
 logging.info("creating covered_blocks")
 c.execute("CREATE TABLE covered_blocks "
           "AS (SELECT donor_id, "
-          " string_agg(CAST(block_id AS TEXT), ',' ORDER BY block_id) "
-          "   AS sorted_ids "
+          " array_agg(block_id ORDER BY block_id) "
+          "   AS smaller_ids "
           " FROM plural_block "
           " GROUP BY donor_id)")
 
@@ -326,9 +326,7 @@ con.commit()
 # GROUP_CONCAT we can achieve this by using some string hacks.
 logging.info("creating smaller_coverage")
 c.execute("CREATE TABLE smaller_coverage "
-          "AS (SELECT donor_id, block_id, "
-          " TRIM(',' FROM split_part(sorted_ids, CAST(block_id AS TEXT), 1)) "
-          "      AS smaller_ids "
+          "AS (SELECT donor_id, block_id, smaller_ids "
           " FROM plural_block INNER JOIN covered_blocks "
           " USING (donor_id))")
 
@@ -359,7 +357,7 @@ def candidates_gen(result_set):
         smaller_ids = row['smaller_ids']
 
         if smaller_ids:
-            smaller_ids = lset(smaller_ids.split(','))
+            smaller_ids = lset(smaller_ids)
         else:
             smaller_ids = lset([])
 
