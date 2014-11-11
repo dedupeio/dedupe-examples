@@ -107,7 +107,7 @@ else:
               {'field' : 'state', 'type': 'String'},
               {'field' : 'zip', 'type': 'String', 'has missing' : True},
               {'field' : 'person', 'variable name' : 'person',
-               'type' : 'Categorical', 'categories' : [0, 1]},
+               'type' : 'Exists'},
               {'type' : 'Interaction',
                'interaction variables' : ['person', 'address']},
               {'type' : 'Interaction', 
@@ -161,7 +161,7 @@ else:
     # However, requiring that we cover every single true dupe pair may
     # mean that we have to use blocks that put together many, many
     # distinct pairs that we'll have to expensively, compare as well.
-    deduper.train(ppc=0.001, uncovered_dupes=5)
+    deduper.train(ppc=0.01, uncovered_dupes=5)
 
     # When finished, save our labeled, training pairs to disk
     with open(training_file, 'w') as tf:

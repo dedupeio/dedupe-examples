@@ -10,6 +10,8 @@ def evaluateDuplicates(found_dupes, true_dupes):
     print 'found duplicate'
     print len(found_dupes)
 
+    print len(true_dupes)
+
     print 'precision'
     print 1 - len(false_positives) / float(len(found_dupes))
 
@@ -17,13 +19,13 @@ def evaluateDuplicates(found_dupes, true_dupes):
     print len(true_positives) / float(len(true_dupes))
 
 
-def dupePairs(filename, rowname) :
+def dupePairs(filename, colname) :
     dupe_d = collections.defaultdict(list)
 
     with open(filename) as f:
         reader = csv.DictReader(f, delimiter=',', quotechar='"')
         for row in reader:
-            dupe_d[row[rowname]].append(row['person_id'])
+            dupe_d[row[colname]].append(row['person_id'])
 
     if 'x' in dupe_d :
         del dupe_d['x']
@@ -36,11 +38,11 @@ def dupePairs(filename, rowname) :
 
     return dupe_s
 
-manual_clusters = 'patstat_reference.csv'
 dedupe_clusters = 'patstat_output.csv'
+manual_clusters = 'patstat_reference.csv'
 
-true_dupes = dupePairs(manual_clusters, 'leuven_id')
 test_dupes = dupePairs(dedupe_clusters, 'Cluster ID')
+true_dupes = dupePairs(manual_clusters, 'leuven_id')
 
 evaluateDuplicates(test_dupes, true_dupes)
 

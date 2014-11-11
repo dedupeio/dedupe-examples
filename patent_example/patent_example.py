@@ -29,32 +29,12 @@ optp.add_option('-v', '--verbose', dest='verbose', action='count',
                 )
 (opts, args) = optp.parse_args()
 log_level = logging.WARNING 
-if opts.verbose == 1:
+
+if opts.verbose == 1 :
     log_level = logging.INFO
-elif opts.verbose >= 2:
+elif opts.verbose > 1 :
     log_level = logging.DEBUG
-logging.basicConfig(level=log_level)
-
-
-# ## Setup
-
-input_file = 'patstat_input.csv'
-output_file = 'patstat_output.csv'
-settings_file = 'patstat_settings.json'
-training_file = 'patstat_training.json'
-
-
-def preProcess(column):
-    """
-    Do a little bit of data cleaning with the help of Unidecode and Regex.
-    Things like casing, extra spaces, quotes and new lines can be ignored.
-    """
-
-    column = unidecode(column)
-    column = re.sub('  +', ' ', column)
-    column = re.sub('\n', ' ', column)
-    column = column.strip().strip('"').strip("'").lower().strip()
-    return column
+logging.getLogger().setLevel(log_level)
 
 
 def readData(filename, set_delim='**'):
@@ -65,72 +45,57 @@ def readData(filename, set_delim='**'):
       tuples
     """
 
-    word_count = collections.defaultdict(int)
-    all_words = 0.0
-
     data_d = {}
     with open(filename) as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
-            for k in row:
-                 row[k] = preProcess(row[k])
+            row = dict((k, v.lower()) for k, v in row.items())
             row['LatLong'] = (float(row['Lat']), float(row['Lng']))
-            del row['Lat']
-            del row['Lng']
             row['Class'] = tuple(row['Class'].split(set_delim))
             row['Coauthor'] = tuple([author for author
                                      in row['Coauthor'].split(set_delim)
                                      if author != 'none'])
             
-            if not row['Name'] :
-                word_count[''] += 1
-                all_words += 1
-
-            for word in row['Name'].split() :
-                word_count[word] += 1
-                all_words += 1
-            
             data_d[idx] = row
 
-    for word in word_count :
-        word_count[word] /= all_words
-
-    for idx, record in data_d.items() :
-        name_prob = 1
-        if not record['Name'] :
-            name_prob *= word_count['']
-
-        for word in record['Name'].split() :
-            name_prob *= word_count[word]
-        record['Name Probability'] = name_prob
-        
     return data_d
 
-# With this feature we are trying to control for the fact that
-# some inventors appear hundreds of times.
-def name_probability_log_odds(field_1, field_2) :
-    phi = field_1 * field_2
-    return math.log(phi/(1-phi))
 
-print 'importing data ...'
-data_d = readData(input_file)
+def philips(field_1, field_2) :
+    if 'philips' in field_1 and 'philips' in field_2 :
+        return 1
+    else :
+        return 0
+
 
 # These two generators will give us the corpora setting up the Set
 # distance metrics
-def classes() :
-    for record in data_d.itervalues() :
+def classes(data) :
+    for record in data.itervalues() :
         yield record['Class']
 
-def coauthors() :
-    for record in data_d.itervalues() :
+def coauthors(data) :
+    for record in data.itervalues() :
         yield record['Coauthor']
+
+def names(data) :
+    for record in data.itervalues() :
+        yield record['Name']
+
+input_file = 'patstat_input.csv'
+output_file = 'patstat_output.csv'
+settings_file = 'patstat_settings.json'
+training_file = 'patstat_training.json'
+
+print 'importing data ...'
+data_d = readData(input_file)
 
 # ## Training
 
 if os.path.exists(settings_file):
     print 'reading from', settings_file
     with open(settings_file) as sf :
-        deduper = dedupe.StaticDedupe(sf)
+        deduper = dedupe.StaticDedupe(sf, num_cores=2)
 
 else:
     # Define the fields dedupe will pay attention to
@@ -138,42 +103,42 @@ else:
         {'field' : 'Name', 
          'variable name' : 'Name',
          'type': 'String', 
-         'has missing':True},
-        {'field' : 'LatLong','type' : 'LatLong', 'has missing' : True},
+         'has missing' : True},
+        {'field' : 'Name',
+         'type' : 'Custom', 
+         'comparator' : philips},
+        {'field' : 'LatLong', 
+         'type' : 'LatLong', 
+         'has missing' : True},
         {'field' : 'Class', 
          'variable name' : 'Class',
          'type': 'Set', 
-         'corpus' : classes()},
+         'corpus' : classes(data_d)},
         {'field' : 'Coauthor', 
          'variable name' : 'Coauthor',
          'type': 'Set', 
-         'corpus' : coauthors()},
-        {'field' : 'Name Probability', 
-         'variable name' : 'NameProb',
-         'type' : 'Custom', 
-         'comparator' : name_probability_log_odds},
-        {'type' : 'Interaction', 
-         'interaction variables' : ['NameProb', 
-                                    'Class']},
-        {'type' : 'Interaction', 
-         'interaction variables' : ['NameProb', 
-                                   'Name']},
-        {'type' : 'Interaction', 
-         'interaction variables' : ['NameProb', 
-                                    'Coauthor']}
+         'corpus' : coauthors(data_d)},
+        {'field' : 'Name',
+         'variable name' : 'Name Text',
+         'type' : 'Text',
+         'corpus' : names(data_d),
+         'has missing' : True},
+        {'type' : 'Interaction',
+         'interaction variables' : ['Name', 'Name Text']}
     ]
 
     # Create a new deduper object and pass our data model to it.
-    deduper = dedupe.Dedupe(fields)
+    deduper = dedupe.Dedupe(fields, num_cores=2)
 
-    # To train dedupe, we feed it a random sample of records.
-    deduper.sample(data_d, 60000)
+    # To train dedupe, we feed it a sample of records.
+    deduper.sample(data_d, 40000)
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
     if os.path.exists(training_file):
         print 'reading labeled examples from ', training_file
         with open(training_file) as tf :
             deduper.readTraining(tf)
+
     # ## Active learning
 
     # Starts the training loop. Dedupe will find the next pair of records
@@ -185,7 +150,7 @@ else:
     print 'starting active labeling...'
     dedupe.consoleLabel(deduper)
 
-    deduper.train()
+    deduper.train(uncovered_dupes=5)
 
     # When finished, save our training away to disk
     with open(training_file, 'w') as tf :
@@ -197,9 +162,7 @@ else:
     with open(settings_file, 'w') as sf :
         deduper.writeSettings(sf)
 
-threshold = deduper.threshold(data_d, recall_weight=4)
-
-clustered_dupes = deduper.match(data_d, threshold)
+clustered_dupes = deduper.match(data_d, 0.5)
 
 print '# duplicate sets', len(clustered_dupes)
 
@@ -209,19 +172,15 @@ print '# duplicate sets', len(clustered_dupes)
 # 'Cluster ID' which indicates which records refer to each other.
 
 cluster_membership = {}
-cluster_id = None
+cluster_id = 0
 for cluster_id, (cluster, score) in enumerate(clustered_dupes):
     for record_id in cluster:
         cluster_membership[record_id] = (cluster_id, score)
 
-if cluster_id :
-    unique_id = cluster_id + 1
-else :
-    unique_id = 0
+unique_id = cluster_id + 1
 
 with open(output_file, 'w') as f_out, open(input_file) as f_in :
     writer = csv.writer(f_out)
-
     reader = csv.reader(f_in)
 
     heading_row = reader.next()
@@ -229,8 +188,7 @@ with open(output_file, 'w') as f_out, open(input_file) as f_in :
     heading_row.insert(0, 'Cluster ID')
     writer.writerow(heading_row)
 
-    for idx, row in enumerate(reader):
-        row_id = int(idx)
+    for row_id, row in enumerate(reader):
         if row_id in cluster_membership:
             cluser_id, score = cluster_membership[row_id]
         else:
