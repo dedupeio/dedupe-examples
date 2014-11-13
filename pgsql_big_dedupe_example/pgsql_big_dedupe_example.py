@@ -367,9 +367,9 @@ csv_file = tempfile.NamedTemporaryFile(prefix='entity_map_', delete=False)
 csv_writer = csv.writer(csv_file)
 
 
-for cluster, score in clustered_dupes:
+for cluster, scores in clustered_dupes:
     cluster_id = cluster[0]
-    for donor_id in cluster:
+    for donor_id, score in zip(cluster, scores) :
         csv_writer.writerow([donor_id, cluster_id, score])
 
 c4.close()

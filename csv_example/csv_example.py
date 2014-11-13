@@ -52,26 +52,14 @@ settings_file = 'csv_example_learned_settings'
 training_file = 'csv_example_training.json'
 
 
-# Dedupe can take custom field comparison functions, here's one
-# we'll use for zipcodes
-def sameOrNotComparator(field_1, field_2) :
-    if field_1 and field_2 :
-        if field_1 == field_2 :
-            return 1
-        else:
-            return 0
-    else :
-        return nan
-
-
-
 def preProcess(column):
     """
     Do a little bit of data cleaning with the help of Unidecode and Regex.
     Things like casing, extra spaces, quotes and new lines can be ignored.
     """
-
+    import unidecode
     column = column.decode("utf8")
+    column = unidecode.unidecode(column)
     column = re.sub('  +', ' ', column)
     column = re.sub('\n', ' ', column)
     column = column.strip().strip('"').strip("'").lower().strip()
@@ -186,14 +174,14 @@ print '# duplicate sets', len(clustered_dupes)
 cluster_membership = {}
 cluster_id = 0
 for (cluster_id, cluster) in enumerate(clustered_dupes):
-    id_set, conf_score = cluster
+    id_set, scores = cluster
     cluster_d = [data_d[c] for c in id_set]
     canonical_rep = dedupe.canonicalize(cluster_d)
-    for record_id in id_set:
+    for record_id, score in zip(id_set, scores) :
         cluster_membership[record_id] = {
             "cluster id" : cluster_id,
             "canonical representation" : canonical_rep,
-            "confidence": conf_score
+            "confidence": score
         }
 
 singleton_id = cluster_id + 1
@@ -205,11 +193,11 @@ with open(output_file, 'w') as f_output:
         reader = csv.reader(f_input)
 
         heading_row = reader.next()
+        heading_row.insert(0, 'confidence_score')
         heading_row.insert(0, 'Cluster ID')
         canonical_keys = canonical_rep.keys()
         for key in canonical_keys:
             heading_row.append('canonical_' + key)
-        heading_row.append('confidence_score')
         
         writer.writerow(heading_row)
 
@@ -218,14 +206,14 @@ with open(output_file, 'w') as f_output:
             if row_id in cluster_membership :
                 cluster_id = cluster_membership[row_id]["cluster id"]
                 canonical_rep = cluster_membership[row_id]["canonical representation"]
+                row.insert(0, cluster_membership[row_id]['confidence'])
                 row.insert(0, cluster_id)
                 for key in canonical_keys:
                     row.append(canonical_rep[key].encode('utf8'))
-                row.append(cluster_membership[row_id]['confidence'])
             else:
+                row.insert(0, None)
                 row.insert(0, singleton_id)
                 singleton_id += 1
                 for key in canonical_keys:
                     row.append(None)
-                row.append(None)
             writer.writerow(row)

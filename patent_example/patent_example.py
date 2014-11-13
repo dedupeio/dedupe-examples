@@ -51,10 +51,10 @@ def readData(filename, set_delim='**'):
         for idx, row in enumerate(reader):
             row = dict((k, v.lower()) for k, v in row.items())
             row['LatLong'] = (float(row['Lat']), float(row['Lng']))
-            row['Class'] = tuple(row['Class'].split(set_delim))
-            row['Coauthor'] = tuple([author for author
-                                     in row['Coauthor'].split(set_delim)
-                                     if author != 'none'])
+            row['Class'] = tuple(sorted(row['Class'].split(set_delim)))
+            row['Coauthor'] = tuple(sorted([author for author
+                                            in row['Coauthor'].split(set_delim)
+                                            if author != 'none']))
             
             data_d[idx] = row
 
@@ -173,8 +173,8 @@ print '# duplicate sets', len(clustered_dupes)
 
 cluster_membership = {}
 cluster_id = 0
-for cluster_id, (cluster, score) in enumerate(clustered_dupes):
-    for record_id in cluster:
+for cluster_id, (cluster, scores) in enumerate(clustered_dupes):
+    for record_id, score in zip(cluster, score):
         cluster_membership[record_id] = (cluster_id, score)
 
 unique_id = cluster_id + 1

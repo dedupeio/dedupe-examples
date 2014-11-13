@@ -373,7 +373,7 @@ c.execute("CREATE TABLE entity_map "
 
 for cluster, score in clustered_dupes :
     cluster_id = cluster[0]
-    for donor_id in cluster :
+    for donor_id, score in zip(cluster, scores) :
         c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
                   (donor_id, cluster_id, score))
 

@@ -43,14 +43,6 @@ output_file = 'data_matching_output.csv'
 settings_file = 'data_matching_learned_settings'
 training_file = 'data_matching_training.json'
 
-def comparePrice(price_1, price_2) :
-    if price_1 == 0 :
-        return numpy.nan
-    elif price_2 == 0 :
-        return numpy.nan
-    else :
-        return abs(numpy.log(price_1) - numpy.log(price_2))
-
 def preProcess(column):
     """
     Do a little bit of data cleaning with the help of Unidecode and Regex.
@@ -117,8 +109,7 @@ else:
         {'field' : 'title', 'type': 'Text', 'corpus' : descriptions()},
         {'field' : 'description', 'type': 'Text',
          'has missing' : True, 'corpus' : descriptions()},
-        {'field' : 'price', 'type' : 'Custom',
-         'comparator' : comparePrice, 'has missing' : True}]
+        {'field' : 'price', 'type' : 'Price', 'has missing' : True}]
 
     # Create a new linker object and pass our data model to it.
     linker = dedupe.RecordLink(fields)
