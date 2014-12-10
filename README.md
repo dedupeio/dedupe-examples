@@ -2,6 +2,12 @@
 
 Example scripts for the [dedupe](https://github.com/datamade/dedupe), a library that uses machine learning to perform de-duplication and entity resolution quickly on structured data.
 
+To get these examples:
+```bash
+git clone https://github.com/datamade/dedupe-examples.git
+cd dedupe-example
+```
+
 ### [CSV example](http://datamade.github.com/dedupe-examples/docs/csv_example.html) - early childhood locations
 
 This example works with a list of early childhood education sites in Chicago from 10 different sources.
