@@ -5,7 +5,15 @@ Example scripts for the [dedupe](https://github.com/datamade/dedupe), a library 
 To get these examples:
 ```bash
 git clone https://github.com/datamade/dedupe-examples.git
-cd dedupe-example
+cd dedupe-examples
+```
+
+or [download this repository](https://github.com/datamade/dedupe/archive/master.zip)
+
+```bash
+cd /path/to/downloaded/file
+unzip master.zip
+cd dedupe-examples
 ```
 
 ### [CSV example](http://datamade.github.com/dedupe-examples/docs/csv_example.html) - early childhood locations
