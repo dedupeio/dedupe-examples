@@ -44,8 +44,6 @@ logging.getLogger().setLevel(log_level)
 
 # ## Setup
 
-# Switch to our working directory and set up our input and out put paths,
-# as well as our settings and training file locations
 input_file = 'csv_example_messy_input.csv'
 output_file = 'csv_example_output.csv'
 settings_file = 'csv_example_learned_settings'
