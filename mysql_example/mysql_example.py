@@ -63,14 +63,14 @@ start_time = time.time()
 # We use Server Side cursors (SSDictCursor and SSCursor) to [avoid
 # having to have enormous result sets in memory](http://stackoverflow.com/questions/1808150/how-to-efficiently-use-mysqldb-sscursor).
 con = MySQLdb.connect(db='contributions',
-                      #charset='utf8',
+                      charset='utf8',
                       read_default_file = MYSQL_CNF, 
                       cursorclass=MySQLdb.cursors.SSDictCursor)
 c = con.cursor()
 c.execute("SET net_write_timeout = 3600")
 
 con2 = MySQLdb.connect(db='contributions',
-                       #charset='utf8',
+                       charset='utf8',
                        read_default_file = MYSQL_CNF, 
                        cursorclass=MySQLdb.cursors.SSCursor)
 c2 = con2.cursor()
