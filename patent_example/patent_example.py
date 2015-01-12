@@ -150,7 +150,7 @@ else:
     print 'starting active labeling...'
     dedupe.consoleLabel(deduper)
 
-    deduper.train(uncovered_dupes=5)
+    deduper.train(uncovered_dupes=5, ppc=0.01)
 
     # When finished, save our training away to disk
     with open(training_file, 'w') as tf :
@@ -174,7 +174,7 @@ print '# duplicate sets', len(clustered_dupes)
 cluster_membership = {}
 cluster_id = 0
 for cluster_id, (cluster, scores) in enumerate(clustered_dupes):
-    for record_id, score in zip(cluster, score):
+    for record_id, score in zip(cluster, scores):
         cluster_membership[record_id] = (cluster_id, score)
 
 unique_id = cluster_id + 1
