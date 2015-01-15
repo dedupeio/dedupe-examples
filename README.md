@@ -28,6 +28,17 @@ python csv_example.py
   
 **To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](http://datamade.github.com/dedupe/doc/csv_example.html).**
 
+### [Patent example](http://datamade.github.io/dedupe-examples/docs/patent_example.html) -  patent holders
+
+This example works with Dutch inventors from the PATSTAT international patent data file
+
+```bash
+cd patent_example
+pip install unidecode
+python patent_example.py
+```
+  (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished)
+
 ### [Record Linkage example](http://datamade.github.com/dedupe-examples/docs/record_linkage_example.html) -  electronics products
 This example links two spreadsheets of electronics products and links up the matching entries. Each dataset individually has no duplicates.
 
