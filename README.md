@@ -70,6 +70,7 @@ To follow this example you need to:
 * Create a PostgreSQL database
 * `easy_install psycopg2` or `pip install psycopg2`
 * `easy_install dj-database-url` or `pip install dj-database-url`
+* `easy_install unidecode` or `pip install unidecode`
 * Set an environment variable with your PostgreSQL connection details: `export DATABASE_URL=postgres://user:password@host/mydatabase`
 
 Once that's all done you can run the example:
