@@ -277,7 +277,8 @@ logging.info("calculating plural_block")
 c.execute("CREATE TABLE plural_block "
           "(SELECT block_id, donor_id "
           " FROM blocking_map INNER JOIN plural_key "
-          " USING (block_key))")
+          " USING (block_key)"
+          " GROUP BY block_key, donor_id)")
 
 logging.info("adding donor_id index and sorting index")
 c.execute("ALTER TABLE plural_block "
@@ -372,7 +373,7 @@ c.execute("CREATE TABLE entity_map "
           "(donor_id INTEGER, canon_id INTEGER, "
           " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
-for cluster, score in clustered_dupes :
+for cluster, scores in clustered_dupes :
     cluster_id = cluster[0]
     for donor_id, score in zip(cluster, scores) :
         c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
