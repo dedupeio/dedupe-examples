@@ -267,7 +267,8 @@ c.execute("CREATE TABLE plural_key "
           " block_id INTEGER UNSIGNED AUTO_INCREMENT, "
           " PRIMARY KEY (block_id)) " 
           "(SELECT block_key FROM blocking_map "
-          " GROUP BY block_key HAVING COUNT(*) > 1)")
+          " GROUP BY block_key HAVING COUNT(*) > 1)"
+          "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
 
 logging.info("creating block_key index")
 c.execute("CREATE UNIQUE INDEX block_key_idx ON plural_key (block_key)")
