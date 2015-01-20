@@ -267,8 +267,7 @@ c.execute("CREATE TABLE plural_key "
           " block_id INTEGER UNSIGNED AUTO_INCREMENT, "
           " PRIMARY KEY (block_id)) " 
           "(SELECT block_key FROM blocking_map "
-          " GROUP BY block_key HAVING COUNT(*) > 1)"
-          "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
+          " GROUP BY block_key HAVING COUNT(*) > 1)")
 
 logging.info("creating block_key index")
 c.execute("CREATE UNIQUE INDEX block_key_idx ON plural_key (block_key)")
@@ -277,8 +276,7 @@ logging.info("calculating plural_block")
 c.execute("CREATE TABLE plural_block "
           "(SELECT block_id, donor_id "
           " FROM blocking_map INNER JOIN plural_key "
-          " USING (block_key)"
-          " GROUP BY block_key, donor_id)")
+          " USING (block_key))")
 
 logging.info("adding donor_id index and sorting index")
 c.execute("ALTER TABLE plural_block "
