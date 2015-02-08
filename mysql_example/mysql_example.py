@@ -371,7 +371,7 @@ c.execute("CREATE TABLE entity_map "
           "(donor_id INTEGER, canon_id INTEGER, "
           " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
-for cluster, score in clustered_dupes :
+for cluster, scores in clustered_dupes :
     cluster_id = cluster[0]
     for donor_id, score in zip(cluster, scores) :
         c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
