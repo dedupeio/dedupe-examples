@@ -107,7 +107,7 @@ else:
     deduper = dedupe.Dedupe(fields)
 
     # To train dedupe, we feed it a sample of records.
-    deduper.sample(data_d, 150000)
+    deduper.sample(data_d, 15000)
 
 
     # If we have training data saved from a previous run of dedupe,
