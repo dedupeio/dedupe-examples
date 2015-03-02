@@ -186,13 +186,11 @@ c.execute("CREATE TABLE blocking_map "
           "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
 
 
-# If dedupe learned a TF-IDF blocking rule, we have to take a pass
-# through the data and create TF-IDF canopies. This can take up to an
-# hour
+# If dedupe learned a Index Predicate, we have to take a pass
+# through the data and create indices.
 print 'creating inverted index'
 
-
-for field in deduper.blocker.tfidf_fields :
+for field in deduper.blocker.index_fields :
     c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
     field_data = (row[0] for row in c2)
     deduper.blocker.index(field_data, field)

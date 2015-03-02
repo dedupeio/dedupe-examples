@@ -189,16 +189,15 @@ c.execute("CREATE TABLE blocking_map "
           "(block_key VARCHAR(200), donor_id INTEGER)")
 
 
-# If dedupe learned a TF-IDF blocking rule, we have to take a pass
-# through the data and create TF-IDF canopies. This can take up to an
-# hour
+# If dedupe learned a Index Predicate, we have to take a pass
+# through the data and create indices.
 print 'creating inverted index'
 
-for field in deduper.blocker.tfidf_fields:
+for field in deduper.blocker.index_fields:
     c2 = con2.cursor('c2')
-    c2.execute("SELECT donor_id, %s FROM processed_donors" % field)
+    c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
     field_data = (row for row in c2)
-    deduper.blocker.tfIdfBlock(field_data, field)
+    deduper.blocker.index(field_data, field)
     c2.close()
 
 # Now we are ready to write our blocking map table by creating a
