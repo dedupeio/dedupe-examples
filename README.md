@@ -8,7 +8,7 @@ git clone https://github.com/datamade/dedupe-examples.git
 cd dedupe-examples
 ```
 
-or [download this repository](https://github.com/datamade/dedupe/archive/master.zip)
+or [download this repository](https://github.com/datamade/dedupe-examples/archive/master.zip)
 
 ```bash
 cd /path/to/downloaded/file
@@ -26,7 +26,7 @@ python csv_example.py
 ```
   (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished)
   
-**To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](http://datamade.github.com/dedupe/doc/csv_example.html).**
+**To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](http://datamade.github.com/dedupe-examples/docs/csv_example.html).**
 
 ### [Patent example](http://datamade.github.io/dedupe-examples/docs/patent_example.html) -  patent holders
 
@@ -47,7 +47,7 @@ cd record_linkage_example
 python record_linkage_example.py 
 ```
 
-**To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](http://datamade.github.com/dedupe/doc/record_linkage_example.html).**
+**To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](http://datamade.github.com/dedupe-examples/docs/record_linkage_example.html).**
 
 ### [MySQL example](http://datamade.github.com/dedupe-examples/docs/mysql_example.html) - IL campaign contributions
 
@@ -69,7 +69,7 @@ python mysql_example.py
 ```
   (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished) 
 
-**To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](http://datamade.github.com/dedupe/doc/mysql_example.html).** 
+**To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](http://datamade.github.com/dedupe-exampls/docs/mysql_example.html).** 
 
 
 ### [PostgreSQL big dedupe example](http://datamade.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset
