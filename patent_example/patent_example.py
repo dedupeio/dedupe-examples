@@ -5,6 +5,9 @@ This code demonstrates how to use dedupe to disambiguate patent
 authors and demonstrates the Set and LatLong data types.
 
 """
+from __future__ import print_function
+from future.builtins import next
+from future.utils import viewvalues
 
 import os
 import csv
@@ -30,10 +33,11 @@ optp.add_option('-v', '--verbose', dest='verbose', action='count',
 (opts, args) = optp.parse_args()
 log_level = logging.WARNING 
 
-if opts.verbose == 1 :
-    log_level = logging.INFO
-elif opts.verbose > 1 :
-    log_level = logging.DEBUG
+if opts.verbose :
+    if opts.verbose == 1 :
+        log_level = logging.INFO
+    elif opts.verbose > 1 :
+        log_level = logging.DEBUG
 logging.getLogger().setLevel(log_level)
 
 
@@ -71,15 +75,15 @@ def philips(field_1, field_2) :
 # These two generators will give us the corpora setting up the Set
 # distance metrics
 def classes(data) :
-    for record in data.itervalues() :
+    for record in viewvalues(data) :
         yield record['Class']
 
 def coauthors(data) :
-    for record in data.itervalues() :
+    for record in viewvalues(data) :
         yield record['Coauthor']
 
 def names(data) :
-    for record in data.itervalues() :
+    for record in viewvalues(data) :
         yield record['Name']
 
 input_file = 'patstat_input.csv'
@@ -87,14 +91,14 @@ output_file = 'patstat_output.csv'
 settings_file = 'patstat_settings.json'
 training_file = 'patstat_training.json'
 
-print 'importing data ...'
+print('importing data ...')
 data_d = readData(input_file)
 
 # ## Training
 
 if os.path.exists(settings_file):
-    print 'reading from', settings_file
-    with open(settings_file) as sf :
+    print('reading from', settings_file)
+    with open(settings_file, 'rb') as sf :
         deduper = dedupe.StaticDedupe(sf, num_cores=2)
 
 else:
@@ -131,11 +135,11 @@ else:
     deduper = dedupe.Dedupe(fields, num_cores=2)
 
     # To train dedupe, we feed it a sample of records.
-    deduper.sample(data_d, 40000)
+    deduper.sample(data_d, 10000)
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
     if os.path.exists(training_file):
-        print 'reading labeled examples from ', training_file
+        print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
             deduper.readTraining(tf)
 
@@ -147,7 +151,7 @@ else:
 
     # use 'y', 'n' and 'u' keys to flag duplicates
     # press 'f' when you are finished
-    print 'starting active labeling...'
+    print('starting active labeling...')
     dedupe.consoleLabel(deduper)
 
     deduper.train(uncovered_dupes=5, ppc=0.01)
@@ -159,12 +163,12 @@ else:
     # Save our weights and predicates to disk.  If the settings file
     # exists, we will skip all the training and learning next time we run
     # this file.
-    with open(settings_file, 'w') as sf :
+    with open(settings_file, 'wb') as sf :
         deduper.writeSettings(sf)
 
 clustered_dupes = deduper.match(data_d, 0.5)
 
-print '# duplicate sets', len(clustered_dupes)
+print('# duplicate sets', len(clustered_dupes))
 
 # ## Writing Results
 
@@ -183,7 +187,7 @@ with open(output_file, 'w') as f_out, open(input_file) as f_in :
     writer = csv.writer(f_out)
     reader = csv.reader(f_in)
 
-    heading_row = reader.next()
+    heading_row = next(reader)
     heading_row.insert(0, 'Score')
     heading_row.insert(0, 'Cluster ID')
     writer.writerow(heading_row)

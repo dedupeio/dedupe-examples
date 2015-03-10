@@ -17,6 +17,8 @@ before running this script. See the annotates source for
 For smaller datasets (<10,000), see our
 [csv_example](http://open-city.github.com/dedupe/doc/csv_example.html)
 """
+from __future__ import print_function
+
 import os
 import itertools
 import time
@@ -42,10 +44,11 @@ optp.add_option('-v', '--verbose', dest='verbose', action='count',
                 )
 (opts, args) = optp.parse_args()
 log_level = logging.WARNING 
-if opts.verbose == 1:
-    log_level = logging.INFO
-elif opts.verbose >= 2:
-    log_level = logging.DEBUG
+if opts.verbose :
+    if opts.verbose == 1:
+        log_level = logging.INFO
+    elif opts.verbose >= 2:
+        log_level = logging.DEBUG
 logging.getLogger().setLevel(log_level)
 
 # ## Setup
@@ -89,8 +92,8 @@ DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address, " \
 # ## Training
 
 if os.path.exists(settings_file):
-    print 'reading from ', settings_file
-    with open(settings_file) as sf :
+    print('reading from ', settings_file)
+    with open(settings_file, 'rb') as sf :
         deduper = dedupe.StaticDedupe(sf, num_cores=4)
 else:
 
@@ -121,7 +124,7 @@ else:
     c.execute(DONOR_SELECT)
     temp_d = dict((i, row) for i, row in enumerate(c))
 
-    deduper.sample(temp_d, 75000)
+    deduper.sample(temp_d, 10000)
     del temp_d
 
     # If we have training data saved from a previous run of dedupe,
@@ -130,13 +133,13 @@ else:
     # __Note:__ if you want to train from
     # scratch, delete the training_file
     if os.path.exists(training_file):
-        print 'reading labeled examples from ', training_file
+        print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
             deduper.readTraining(tf)
 
     # ## Active learning
 
-    print 'starting active labeling...'
+    print('starting active labeling...')
     # Starts the training loop. Dedupe will find the next pair of records
     # it is least certain about and ask you to label them as duplicates
     # or not.
@@ -166,7 +169,7 @@ else:
     # When finished, save our labeled, training pairs to disk
     with open(training_file, 'w') as tf:
         deduper.writeTraining(tf)
-    with open(settings_file, 'w') as sf:
+    with open(settings_file, 'wb') as sf:
         deduper.writeSettings(sf)
 
     # We can now remove some of the memory hobbing objects we used
@@ -175,11 +178,11 @@ else:
 
 ## Blocking
 
-print 'blocking...'
+print('blocking...')
 
 # To run blocking on such a large set of data, we create a separate table
 # that contains blocking keys and record ids
-print 'creating blocking_map database'
+print('creating blocking_map database')
 c.execute("DROP TABLE IF EXISTS blocking_map")
 c.execute("CREATE TABLE blocking_map "
           "(block_key VARCHAR(200), donor_id INTEGER) "
@@ -188,7 +191,7 @@ c.execute("CREATE TABLE blocking_map "
 
 # If dedupe learned a Index Predicate, we have to take a pass
 # through the data and create indices.
-print 'creating inverted index'
+print('creating inverted index')
 
 for field in deduper.blocker.index_fields :
     c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
@@ -197,7 +200,7 @@ for field in deduper.blocker.index_fields :
 
 # Now we are ready to write our blocking map table by creating a
 # generator that yields unique `(block_key, donor_id)` tuples.
-print 'writing blocking map'
+print('writing blocking map')
 
 c.execute(DONOR_SELECT)
 full_data = ((row['donor_id'], row) for row in c)
@@ -228,10 +231,13 @@ done = False
 while not done :
     chunks = (list(itertools.islice(b_data, step)) for step in [step_size]*100)
 
-    results =[pool.apply_async(dbWriter,
-                               ("INSERT INTO blocking_map VALUES (%s, %s)", 
-                                chunk))
-              for chunk in chunks]
+    
+    results = []
+
+    for chunk in chunks :
+        results.append(pool.apply_async(dbWriter,
+                                        ("INSERT INTO blocking_map VALUES (%s, %s)", 
+                                         chunk)))
 
     for r in results :
         r.wait()
@@ -249,7 +255,7 @@ deduper.blocker.resetIndices()
 
 # These steps, particularly the sorting will let us quickly create
 # blocks of data for comparison
-print 'prepare blocking table. this will probably take a while ...'
+print('prepare blocking table. this will probably take a while ...')
 
 logging.info("indexing block_key")
 c.execute("ALTER TABLE blocking_map "
@@ -340,8 +346,8 @@ def candidates_gen(result_set) :
             i += 1
 
             if i % 10000 == 0 :
-                print i, "blocks"
-                print time.time() - start_time, "seconds"
+                print(i, "blocks")
+                print(time.time() - start_time, "seconds")
 
         smaller_ids = row['smaller_ids']
         
@@ -363,7 +369,7 @@ c.execute("SELECT donor_id, city, name, "
           "USING (donor_id) "
           "ORDER BY (block_id)")
 
-print 'clustering...'
+print('clustering...')
 clustered_dupes = deduper.matchBlocks(candidates_gen(c),
                                       threshold=0.5)
 
@@ -374,7 +380,7 @@ clustered_dupes = deduper.matchBlocks(candidates_gen(c),
 # table
 c.execute("DROP TABLE IF EXISTS entity_map")
 
-print 'creating entity_map database'
+print('creating entity_map database')
 c.execute("CREATE TABLE entity_map "
           "(donor_id INTEGER, canon_id INTEGER, "
           " cluster_score FLOAT, PRIMARY KEY(donor_id))")
@@ -391,8 +397,8 @@ c.execute("CREATE INDEX head_index ON entity_map (canon_id)")
 con.commit()
 
 # Print out the number of duplicates found
-print '# duplicate sets'
-print len(clustered_dupes)
+print('# duplicate sets')
+print(len(clustered_dupes))
 
 # ## Payoff
 
@@ -423,10 +429,10 @@ c.execute("SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) AS name, "
           "WHERE donors.donor_id = donation_totals.canon_id")
 
 
-print "Top Donors (deduped)"
+print("Top Donors (deduped)")
 for row in c.fetchall() :
     row['totals'] = locale.currency(row['totals'], grouping=True)
-    print '%(totals)20s: %(name)s' % row
+    print('%(totals)20s: %(name)s' % row)
 
 # Compare this to what we would have gotten if we hadn't done any
 # deduplication
@@ -438,10 +444,10 @@ c.execute("SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) as name, "
           "ORDER BY totals DESC "
           "LIMIT 10")
 
-print "Top Donors (raw)"
+print("Top Donors (raw)")
 for row in c.fetchall() :
     row['totals'] = locale.currency(row['totals'], grouping=True)
-    print '%(totals)20s: %(name)s' % row
+    print('%(totals)20s: %(name)s' % row)
 
 
 
@@ -449,4 +455,4 @@ for row in c.fetchall() :
 c.close()
 con.close()
 
-print 'ran in', time.time() - start_time, 'seconds'
+print('ran in', time.time() - start_time, 'seconds')

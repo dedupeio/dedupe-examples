@@ -8,6 +8,8 @@ online stores. The task is to link products between the datasets.
 The output will be a CSV with our linkded results.
 
 """
+from __future__ import print_function
+from future.builtins import next
 
 import os
 import csv
@@ -30,10 +32,11 @@ optp.add_option('-v', '--verbose', dest='verbose', action='count',
                 )
 (opts, args) = optp.parse_args()
 log_level = logging.WARNING 
-if opts.verbose == 1:
-    log_level = logging.INFO
-elif opts.verbose >= 2:
-    log_level = logging.DEBUG
+if opts.verbose :
+    if opts.verbose == 1:
+        log_level = logging.INFO
+    elif opts.verbose >= 2:
+        log_level = logging.DEBUG
 logging.getLogger().setLevel(log_level)
 
 
@@ -82,7 +85,7 @@ def readData(filename):
     return data_d
 
     
-print 'importing data ...'
+print('importing data ...')
 data_1 = readData('AbtBuy_Abt.csv')
 data_2 = readData('AbtBuy_Buy.csv')
 
@@ -95,8 +98,8 @@ def descriptions() :
 
 
 if os.path.exists(settings_file):
-    print 'reading from', settings_file
-    with open(settings_file) as sf :
+    print('reading from', settings_file)
+    with open(settings_file, 'rb') as sf :
         linker = dedupe.StaticRecordLink(sf)
 
 else:
@@ -114,13 +117,13 @@ else:
     # Create a new linker object and pass our data model to it.
     linker = dedupe.RecordLink(fields)
     # To train the linker, we feed it a sample of records.
-    linker.sample(data_1, data_2, 150000)
+    linker.sample(data_1, data_2, 15000)
 
     # If we have training data saved from a previous run of linker,
     # look for it an load it in.
     # __Note:__ if you want to train from scratch, delete the training_file
     if os.path.exists(training_file):
-        print 'reading labeled examples from ', training_file
+        print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
             linker.readTraining(tf)
 
@@ -130,7 +133,7 @@ else:
     # or not.
     # use 'y', 'n' and 'u' keys to flag duplicates
     # press 'f' when you are finished
-    print 'starting active labeling...'
+    print('starting active labeling...')
 
     dedupe.consoleLabel(linker)
 
@@ -143,7 +146,7 @@ else:
     # Save our weights and predicates to disk.  If the settings file
     # exists, we will skip all the training and learning next time we run
     # this file.
-    with open(settings_file, 'w') as sf :
+    with open(settings_file, 'wb') as sf :
         linker.writeSettings(sf)
 
 
@@ -158,10 +161,10 @@ else:
 # If we had more data, we would not pass in all the blocked data into
 # this function but a representative sample.
 
-print 'clustering...'
+print('clustering...')
 linked_records = linker.match(data_1, data_2, 0)
 
-print '# duplicate sets', len(linked_records)
+print('# duplicate sets', len(linked_records))
 
 # ## Writing Results
 
@@ -190,14 +193,14 @@ with open(output_file, 'w') as f:
             reader = csv.reader(f_input)
 
             if header_unwritten :
-                heading_row = reader.next()
+                heading_row = next(reader)
                 heading_row.insert(0, 'source file')
                 heading_row.insert(0, 'Link Score')
                 heading_row.insert(0, 'Cluster ID')
                 writer.writerow(heading_row)
                 header_unwritten = False
             else :
-                reader.next()
+                next(reader)
 
             for row_id, row in enumerate(reader):
                 cluster_details = cluster_membership.get(filename + str(row_id))
