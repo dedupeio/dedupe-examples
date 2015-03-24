@@ -69,6 +69,7 @@ con = psycopg2.connect(database=db_conf['NAME'],
                        user=db_conf['USER'],
                        password=db_conf['PASSWORD'],
                        host=db_conf['HOST'],
+                       port=db_conf['PORT'],
                        cursor_factory=psycopg2.extras.RealDictCursor)
 
 c = con.cursor()
@@ -76,7 +77,8 @@ c = con.cursor()
 con2 = psycopg2.connect(database=db_conf['NAME'],
                         user=db_conf['USER'],
                         password=db_conf['PASSWORD'],
-                        host=db_conf['HOST'])
+                        host=db_conf['HOST'],
+                        port=db_conf['PORT'])
 
 
 # We'll be using variations on this following select statement to pull
@@ -117,13 +119,13 @@ else:
               ]
 
     # Create a new deduper object and pass our data model to it.
-    deduper = dedupe.Dedupe(fields, data_sample, num_cores=4)
+    deduper = dedupe.Dedupe(fields, num_cores=4)
 
     # Named cursor runs server side with psycopg2
     cur = con.cursor('donor_select')
 
     cur.execute(DONOR_SELECT)
-    temp_d = dict((i, row) for i, row in enumerate(c))
+    temp_d = dict((i, row) for i, row in enumerate(cur))
 
     deduper.sample(temp_d, 75000)
     del temp_d
@@ -176,7 +178,6 @@ else:
     # We can now remove some of the memory hobbing objects we used
     # for training
     deduper.cleanupTraining()
-    del data_sample
 
 ## Blocking
 print 'blocking...'
@@ -204,7 +205,7 @@ for field in deduper.blocker.index_fields:
 # generator that yields unique `(block_key, donor_id)` tuples.
 print 'writing blocking map'
 
-c3 = con.cursor('donor_select')
+c3 = con.cursor('donor_select2')
 c3.execute(DONOR_SELECT)
 full_data = ((row['donor_id'], row) for row in c3)
 b_data = deduper.blocker(full_data)
