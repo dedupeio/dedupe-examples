@@ -75,7 +75,8 @@ if not db_conf:
 conn = psycopg2.connect(database=db_conf['NAME'],
                         user=db_conf['USER'],
                         password=db_conf['PASSWORD'],
-                        host=db_conf['HOST'])
+                        host=db_conf['HOST'],
+                        port=db_conf['PORT'])
 
 c = conn.cursor()
 
