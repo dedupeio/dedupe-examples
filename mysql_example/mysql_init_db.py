@@ -97,7 +97,7 @@ c.execute("CREATE TABLE donors "
           " last_name VARCHAR(70), first_name VARCHAR(35), "
           " address_1 VARCHAR(35), address_2 VARCHAR(36), "
           " city VARCHAR(20), state VARCHAR(15), "
-          " zip VARCHAR(11), employer VARCHAR(35), "
+          " zip VARCHAR(11), employer VARCHAR(70), "
           " occupation VARCHAR(40)) "
           "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
 c.execute("INSERT INTO donors "
