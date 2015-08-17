@@ -74,13 +74,6 @@ con = psycopg2.connect(database=db_conf['NAME'],
 
 c = con.cursor()
 
-con2 = psycopg2.connect(database=db_conf['NAME'],
-                        user=db_conf['USER'],
-                        password=db_conf['PASSWORD'],
-                        host=db_conf['HOST'],
-                        port=db_conf['PORT'])
-
-
 # We'll be using variations on this following select statement to pull
 # in campaign donor info.
 #
@@ -195,9 +188,9 @@ c.execute("CREATE TABLE blocking_map "
 print 'creating inverted index'
 
 for field in deduper.blocker.index_fields:
-    c2 = con2.cursor('c2')
+    c2 = con.cursor('c2')
     c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
-    field_data = (row for row in c2)
+    field_data = set(row[field] for row in c2)
     deduper.blocker.index(field_data, field)
     c2.close()
 
