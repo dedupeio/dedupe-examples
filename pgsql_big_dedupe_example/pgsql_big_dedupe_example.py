@@ -190,7 +190,7 @@ print 'creating inverted index'
 for field in deduper.blocker.index_fields:
     c2 = con.cursor('c2')
     c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
-    field_data = set(row[field] for row in c2)
+    field_data = (row[field] for row in c2)
     deduper.blocker.index(field_data, field)
     c2.close()
 
