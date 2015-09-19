@@ -192,13 +192,13 @@ conn.commit()
 
 c.execute("CREATE TABLE processed_donors AS " 
           "(SELECT donor_id, " 
-          " IFNULL(LOWER(city), '') AS city, " 
+          " LOWER(city) AS city, " 
           " LOWER(CONCAT_WS(' ', first_name, last_name)) AS name, " 
-          " IFNULL(LOWER(zip),'') AS zip, " 
-          " IFNULL(LOWER(state),'') AS state, " 
+          " LOWER(zip) AS zip, " 
+          " LOWER(state) AS state, " 
           " LOWER(CONCAT_WS(' ', address_1, address_2)) AS address, " 
-          " IFNULL(LOWER(occupation), '') AS occupation, "
-          " IFNULL(LOWER(employer), '') AS employer, "
+          " LOWER(occupation) AS occupation, "
+          " LOWER(employer) AS employer, "
           " ISNULL(first_name) AS person "
           " FROM donors)")
  

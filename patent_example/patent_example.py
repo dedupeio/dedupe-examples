@@ -54,11 +54,16 @@ def readData(filename, set_delim='**'):
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
             row = dict((k, v.lower()) for k, v in row.items())
-            row['LatLong'] = (float(row['Lat']), float(row['Lng']))
+            if row['Lat'] == row['Lng'] == '0.0' :
+                row['LatLong'] = None
+            else :
+                row['LatLong'] = (float(row['Lat']), float(row['Lng']))
             row['Class'] = tuple(sorted(row['Class'].split(set_delim)))
             row['Coauthor'] = tuple(sorted([author for author
                                             in row['Coauthor'].split(set_delim)
                                             if author != 'none']))
+            if row['Name'] = '' :
+                row['Name'] = None
             
             data_d[idx] = row
 

@@ -224,13 +224,13 @@ conn.commit()
 print 'creating processed_donors...'
 c.execute("CREATE TABLE processed_donors AS "
           "(SELECT donor_id, "
-          " COALESCE(LOWER(city), '') AS city, "
+          " LOWER(city) AS city, "
           " LOWER(CONCAT_WS(' ', first_name, last_name)) AS name, "
-          " COALESCE(LOWER(zip),'') AS zip, "
-          " COALESCE(LOWER(state),'') AS state, "
+          " LOWER(zip) AS zip, "
+          " LOWER(state) AS state, "
           " LOWER(CONCAT_WS(' ', address_1, address_2)) AS address, "
-          " COALESCE(LOWER(occupation), '') AS occupation, "
-          " COALESCE(LOWER(employer), '') AS employer, "
+          " LOWER(occupation) AS occupation, "
+          " LOWER(employer) AS employer, "
           " CAST((first_name IS NULL) AS INTEGER) AS person "
           " FROM donors)")
 

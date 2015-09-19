@@ -69,8 +69,12 @@ def readData(filename):
             clean_row = dict([(k, preProcess(v)) for (k, v) in row.items()])
             clean_row['name'] = ' '.join([clean_row['FirstName'], 
                                           clean_row['LastName']])
+            if not clean_row['name'] :
+                clean_row['name'] = None
             clean_row['address'] = ' '.join([clean_row['Address1'], 
                                              clean_row['Address2']])
+            if not clean_row['address'] :
+                clean_row['address'] = None
             row_id = int(row['ID'])
             data_d[row_id] = clean_row
 
@@ -93,13 +97,17 @@ else:
     # Notice how we are telling dedupe to use a custom field comparator
     # for the 'Zip' field. 
     fields = [
-        {'field' : 'name', 'type': 'Name'},
-        {'field' : 'address', 'type': 'Address'},
+        {'field' : 'name', 'type': 'Name', 
+         'crf' : True},
+        {'field' : 'address', 'type': 'Address',
+         'crf' : True},
         {'field' : 'City', 'type' : 'ShortString'},
         {'field' : 'State', 'type' : 'ShortString'},
         {'field' : 'Zip', 'type' : 'ShortString'},
         {'field' : 'Title', 'type' : 'ShortString'},
-        {'field' : 'Phone', 'type' : 'ShortString'}]
+        {'field' : 'Phone', 'type' : 'ShortString'},
+        {'field' : 'RedactionRequested', 'type' : 'Categorical',
+         'categories' : ['true', 'false']}]
 
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields)
