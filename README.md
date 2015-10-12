@@ -51,47 +51,16 @@ python record_linkage_example.py
 
 ### [MySQL example](http://datamade.github.com/dedupe-examples/docs/mysql_example.html) - IL campaign contributions
 
-Takes a database of IL campaign contribution data, loads it in to a MySQL database, and identifies the unique donors. This can take a few hours and will noticeably tax your laptop. You might want to run it overnight.
-
-To follow this example you need to 
-
-* Create a MySQL database called 'contributions'
-* Copy `mysql_example/mysql.cnf_LOCAL` to `mysql_example/mysql.cnf`
-* Update `mysql_example/mysql.cnf` with your MySQL username and password
-* `easy_install MySQL-python` or `pip install MySQL-python`
-
-Once that's all done you can run the example:
-
-```bash
-cd mysql_example
-python mysql_init_db.py 
-python mysql_example.py
-```
-  (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished) 
+See `mysql_example/README.md` for details
 
 **To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](http://datamade.github.com/dedupe-examples/docs/mysql_example.html).** 
 
 
 ### [PostgreSQL big dedupe example](http://datamade.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset
 
+See `pgsql_big_dedupe_example/README.md` for details
+
 This is the same example as the MySQL IL campaign contributions dataset above, but ported to run on PostgreSQL.
-
-To follow this example you need to:
-
-* Create a PostgreSQL database
-* `easy_install psycopg2` or `pip install psycopg2`
-* `easy_install dj-database-url` or `pip install dj-database-url`
-* `easy_install unidecode` or `pip install unidecode`
-* Set an environment variable with your PostgreSQL connection details: `export DATABASE_URL=postgres://user:password@host/mydatabase`
-
-Once that's all done you can run the example:
-
-```bash
-cd pgsql_big_dedupe_example
-python pgsql_big_dedupe_example_init_db.py 
-python pgsql_big_dedupe_example.py
-```
-  (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished) 
 
 
 ## Training
