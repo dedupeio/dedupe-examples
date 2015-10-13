@@ -62,7 +62,7 @@ def readData(filename, set_delim='**'):
             row['Coauthor'] = tuple(sorted([author for author
                                             in row['Coauthor'].split(set_delim)
                                             if author != 'none']))
-            if row['Name'] = '' :
+            if row['Name'] == '' :
                 row['Name'] = None
             
             data_d[idx] = row
