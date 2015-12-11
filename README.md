@@ -22,6 +22,7 @@ This example works with a list of early childhood education sites in Chicago fro
 
 ```bash
 cd csv_example
+pip install unidecode
 python csv_example.py
 ```
   (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished)
