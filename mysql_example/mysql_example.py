@@ -107,7 +107,7 @@ else:
               {'field' : 'address', 'type': 'String', 
                'variable name' : 'address', 'has missing' : True},
               {'field' : 'city', 'type': 'String', 'has missing' : True},
-              {'field' : 'state', 'type': 'String'},
+              {'field' : 'state', 'type': 'String', 'has missing': True},
               {'field' : 'zip', 'type': 'String', 'has missing' : True},
               {'field' : 'person', 'variable name' : 'person',
                'type' : 'Exists'},
@@ -194,7 +194,8 @@ c.execute("CREATE TABLE blocking_map "
 print('creating inverted index')
 
 for field in deduper.blocker.index_fields :
-    c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
+    c2.execute("SELECT DISTINCT {field} FROM processed_donors "
+               "WHERE {field} IS NOT NULL".format(field = field))
     field_data = (row[0] for row in c2)
     deduper.blocker.index(field_data, field)
 
