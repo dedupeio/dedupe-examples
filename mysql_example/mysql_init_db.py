@@ -15,10 +15,16 @@ Tables created:
 * contributions - contribution amounts tied to donor and recipients tables
 """
 
+from __future__ import print_function
+
 import os
-import urllib2
 import zipfile
 import warnings
+
+try:
+    from urllib2 import urlopen  # Python2
+except ImportError:
+    from urllib.request import urlopen   # Python3
 
 import MySQLdb
 
@@ -28,15 +34,15 @@ contributions_zip_file = 'Illinois-campaign-contributions.txt.zip'
 contributions_txt_file = 'Illinois-campaign-contributions.txt'
 
 if not os.path.exists(contributions_zip_file) :
-    print 'downloading', contributions_zip_file, '(~60mb) ...'
-    u = urllib2.urlopen('https://s3.amazonaws.com/dedupe-data/Illinois-campaign-contributions.txt.zip')
-    localFile = open(contributions_zip_file, 'w')
+    print('downloading', contributions_zip_file, '(~60mb) ...')
+    u = urlopen('https://s3.amazonaws.com/dedupe-data/Illinois-campaign-contributions.txt.zip')
+    localFile = open(contributions_zip_file, 'wb')
     localFile.write(u.read())
     localFile.close()
 
 if not os.path.exists(contributions_txt_file) :
     zip_file = zipfile.ZipFile(contributions_zip_file, 'r')
-    print 'extracting %s' % contributions_zip_file
+    print('extracting %s' % contributions_zip_file)
     zip_file_contents = zip_file.namelist()
     for f in zip_file_contents:
         if ('.txt' in f):
@@ -48,7 +54,7 @@ conn = MySQLdb.connect(read_default_file = os.path.abspath('.') + '/mysql.cnf',
                        db='contributions')
 c = conn.cursor()
 
-print 'importing raw data from csv...'
+print('importing raw data from csv...')
 c.execute("DROP TABLE IF EXISTS raw_table")
 c.execute("DROP TABLE IF EXISTS donors")
 c.execute("DROP TABLE IF EXISTS recipients")
@@ -91,7 +97,7 @@ c.execute("LOAD DATA LOCAL INFILE %s INTO TABLE raw_table "
           (contributions_txt_file,))
 conn.commit()
 
-print 'creating donors table...'
+print('creating donors table...')
 c.execute("CREATE TABLE donors "
           "(donor_id INTEGER PRIMARY KEY AUTO_INCREMENT, "
           " last_name VARCHAR(70), first_name VARCHAR(35), "
@@ -111,7 +117,7 @@ c.execute("INSERT INTO donors "
 conn.commit()
 
 
-print 'creating indexes on donors table'
+print('creating indexes on donors table')
 c.execute("CREATE INDEX donors_donor_info ON donors "
           "(last_name, first_name, address_1, address_2, city, "
           " state, zip)")
@@ -119,7 +125,7 @@ conn.commit()
 
 
 
-print 'creating recipients table...'
+print('creating recipients table...')
 c.execute("CREATE TABLE recipients "
           "(recipient_id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(70)) "
           "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
@@ -128,7 +134,7 @@ c.execute("INSERT IGNORE INTO recipients "
           "SELECT DISTINCT committee_id, committee_name FROM raw_table")
 conn.commit()
 
-print 'creating contributions table'
+print('creating contributions table')
 c.execute("CREATE TABLE contributions "
           "(contribution_id INT, donor_id INT, recipient_id INT, "
           " report_type VARCHAR(24), date_recieved DATE, "
@@ -166,7 +172,7 @@ c.execute("INSERT INTO contributions "
           "donors.zip = TRIM(raw_table.zip)")
 conn.commit()
 
-print 'creating indexes on contributions'
+print('creating indexes on contributions')
 c.execute("ALTER TABLE contributions ADD PRIMARY KEY(contribution_id)")
 c.execute("CREATE INDEX donor_idx ON contributions (donor_id)")
 c.execute("CREATE INDEX recipient_idx ON contributions (recipient_id)")
@@ -174,7 +180,7 @@ c.execute("CREATE INDEX recipient_idx ON contributions (recipient_id)")
 
 conn.commit()
 
-print 'nullifying empty strings in donors'
+print('nullifying empty strings in donors')
 c.execute("UPDATE donors "
           "SET "
           "first_name = CASE first_name WHEN '' THEN NULL ELSE first_name END, "
@@ -212,4 +218,5 @@ c.execute("CREATE INDEX donor_idx ON processed_donors (donor_id)")
 
 c.close()
 conn.close()
-print 'done'
+print('done')
+
