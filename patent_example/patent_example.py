@@ -58,7 +58,7 @@ def readData(filename, set_delim='**'):
                 row['LatLong'] = None
             else :
                 row['LatLong'] = (float(row['Lat']), float(row['Lng']))
-            row['Class'] = tuple(sorted(row['Class'].split(set_delim)))
+            row['Class'] = tuple(sorted(row['Class'].split(set_delim))) if row['Class'] else None
             row['Coauthor'] = tuple(sorted([author for author
                                             in row['Coauthor'].split(set_delim)
                                             if author != 'none']))
@@ -122,11 +122,13 @@ else:
         {'field' : 'Class', 
          'variable name' : 'Class',
          'type': 'Set', 
-         'corpus' : classes(data_d)},
+         'corpus' : classes(data_d),
+         'has missing' : True},
         {'field' : 'Coauthor', 
          'variable name' : 'Coauthor',
          'type': 'Set', 
-         'corpus' : coauthors(data_d)},
+         'corpus' : coauthors(data_d),
+         'has missing' : True},
         {'field' : 'Name',
          'variable name' : 'Name Text',
          'type' : 'Text',
