@@ -55,6 +55,10 @@ def preProcess(column):
     Do a little bit of data cleaning with the help of Unidecode and Regex.
     Things like casing, extra spaces, quotes and new lines can be ignored.
     """
+    try : # python 2/3 string differences
+        column = column.decode('utf8')
+    except :
+        pass
     column = unidecode(column)
     column = re.sub('  +', ' ', column)
     column = re.sub('\n', ' ', column)
