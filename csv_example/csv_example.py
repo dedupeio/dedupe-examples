@@ -57,7 +57,7 @@ def preProcess(column):
     """
     try : # python 2/3 string differences
         column = column.decode('utf8')
-    except :
+    except AttributeError:
         pass
     column = unidecode(column)
     column = re.sub('  +', ' ', column)
