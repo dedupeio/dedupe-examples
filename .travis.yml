@@ -1,6 +1,7 @@
-install
+language: python
+install:
   - pip install pycco
-scripts
+script:
   - git config user.name "Travis CI"
   - git config user.email "fgregg@uchicago.edu"
   - git checkout -b gh-pages
@@ -9,5 +10,5 @@ scripts
   - git push --quiet "https://${GH_TOKEN}@${GH_REF}" gh-pages:gh-pages > /dev/null 2>&1
 env:
   global:
-  - GH_REF: github.com/datamade/dedupe-examples.git
+  - GH_REF=github.com/datamade/dedupe-examples.git
   - secure: zIsxZ8rwo/UjtQXGLS1LfCEEC+45j6nRQJg0Uy0pn+iJqkSMA0opOm/gtBpSFiQlkJIDPDIMqUUkzwiTiT0OojLJnfjdboARi62zx8BzFMKcj0XD0e8tJBEqUa2w1BeFWjFYevUoTQzpYF1Lz1jCk18g/WjYu8+GvPJIu5ianSQ=
