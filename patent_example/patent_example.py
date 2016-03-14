@@ -161,7 +161,7 @@ else:
     print('starting active labeling...')
     dedupe.consoleLabel(deduper)
 
-    deduper.train(uncovered_dupes=5, ppc=0.01)
+    deduper.train(uncovered_dupes=1, ppc=1)
 
     # When finished, save our training away to disk
     with open(training_file, 'w') as tf :

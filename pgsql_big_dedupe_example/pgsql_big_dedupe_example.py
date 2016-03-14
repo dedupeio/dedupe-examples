@@ -152,7 +152,7 @@ else:
     # from consideration. As the size of the data increases, the user
     # will generally want to reduce ppc.
     #
-    # `uncovered_dupes` is the number of true dupes pairs in our training
+    # `pud` is the proportion of true dupes pairs in our training
     # data that we are willing to accept will never be put into any
     # block. If true duplicates are never in the same block, we will never
     # compare them, and may never declare them to be duplicates.
@@ -160,7 +160,7 @@ else:
     # However, requiring that we cover every single true dupe pair may
     # mean that we have to use blocks that put together many, many
     # distinct pairs that we'll have to expensively, compare as well.
-    deduper.train(ppc=0.001, uncovered_dupes=5)
+    deduper.train(ppc=0.001, pud=0.10)
 
     # When finished, save our labeled, training pairs to disk
     with open(training_file, 'w') as tf:
