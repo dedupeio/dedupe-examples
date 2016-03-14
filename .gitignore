@@ -1,6 +1,5 @@
 libdistance-0.2.1
 build
-docs
 *.pyc
 logfile
 *.*~
