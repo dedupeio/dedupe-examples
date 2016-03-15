@@ -7,7 +7,6 @@ logfile
 *.so
 *.py.*
 *.*gz
-*.html
 .#*
 *.*#
 *.json
