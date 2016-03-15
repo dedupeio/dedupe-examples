@@ -7,6 +7,7 @@ script:
   - git checkout -b gh-pages
   - pycco csv_example/csv_example.py
   - pycco mysql_example/mysql_example.py
+  - pycco mysql_example/mysql_init_db.py
   - pycco patent_example/patent_example.py
   - pycco pgsql_example/pgsql_example.py
   - pycco record_linkage_example/record_linkage_example.py
