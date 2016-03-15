@@ -6,6 +6,11 @@ script:
   - git config user.email "fgregg@uchicago.edu"
   - git checkout -b gh-pages
   - pycco csv_example/csv_example.py
+  - pycco mysql_example/mysql_example.py
+  - pycco patent_example/patent_example.py
+  - pycco pgsql_example/pgsql_example.py
+  - pycco record_linkage_example/record_linkage_example.py
+  - pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
   - git add docs/*
   - git commit -m "deploy to github pages"
   - git push --force --quiet "https://${GH_TOKEN}@${GH_REF}" gh-pages:gh-pages > /dev/null 2>&1
