@@ -11,7 +11,7 @@ compiled from several different sources.
 
 The output will be a CSV with our clustered results.
 
-For larger datasets, see our [mysql_example](http://datamade.github.io/dedupe-examples/docs/mysql_example.html)
+For larger datasets, see our [mysql_example](mysql_example.html)
 """
 from future.builtins import next
 

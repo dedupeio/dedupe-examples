@@ -15,7 +15,7 @@ before running this script. See the annotates source for
 [mysql_init_db](http://open-city.github.com/dedupe/doc/mysql_init_db.html)
 
 For smaller datasets (<10,000), see our
-[csv_example](http://open-city.github.com/dedupe/doc/csv_example.html)
+[csv_example](csv_example.html)
 """
 from __future__ import print_function
 
