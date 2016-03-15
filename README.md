@@ -16,7 +16,7 @@ unzip master.zip
 cd dedupe-examples
 ```
 
-### [CSV example](http://datamade.github.com/dedupe-examples/docs/csv_example.html) - early childhood locations
+### [CSV example](https://datamade.github.com/dedupe-examples/docs/csv_example.html) - early childhood locations
 
 This example works with a list of early childhood education sites in Chicago from 10 different sources.
 
@@ -27,9 +27,9 @@ python csv_example.py
 ```
   (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished)
   
-**To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](http://datamade.github.com/dedupe-examples/docs/csv_example.html).**
+**To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](https://datamade.github.com/dedupe-examples/docs/csv_example.html).**
 
-### [Patent example](http://datamade.github.io/dedupe-examples/docs/patent_example.html) -  patent holders
+### [Patent example](https://datamade.github.io/dedupe-examples/docs/patent_example.html) -  patent holders
 
 This example works with Dutch inventors from the PATSTAT international patent data file
 
@@ -40,7 +40,7 @@ python patent_example.py
 ```
   (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished)
 
-### [Record Linkage example](http://datamade.github.com/dedupe-examples/docs/record_linkage_example.html) -  electronics products
+### [Record Linkage example](https://datamade.github.com/dedupe-examples/docs/record_linkage_example.html) -  electronics products
 This example links two spreadsheets of electronics products and links up the matching entries. Each dataset individually has no duplicates.
 
 ```bash
@@ -48,16 +48,16 @@ cd record_linkage_example
 python record_linkage_example.py 
 ```
 
-**To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](http://datamade.github.com/dedupe-examples/docs/record_linkage_example.html).**
+**To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](https://datamade.github.com/dedupe-examples/docs/record_linkage_example.html).**
 
-### [MySQL example](http://datamade.github.com/dedupe-examples/docs/mysql_example.html) - IL campaign contributions
+### [MySQL example](https://datamade.github.com/dedupe-examples/docs/mysql_example.html) - IL campaign contributions
 
 See `mysql_example/README.md` for details
 
-**To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](http://datamade.github.com/dedupe-examples/docs/mysql_example.html).** 
+**To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](https://datamade.github.com/dedupe-examples/docs/mysql_example.html).** 
 
 
-### [PostgreSQL big dedupe example](http://datamade.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset
+### [PostgreSQL big dedupe example](https://datamade.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset
 
 See `pgsql_big_dedupe_example/README.md` for details
 
