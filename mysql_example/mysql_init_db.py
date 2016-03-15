@@ -6,7 +6,7 @@ Illinois campaign contributions and loads them in t aMySQL database
 named 'contributions'.
  
 __Note:__ You will need to run this script first before execuing
-[mysql_example.py](http://open-city.github.com/dedupe/doc/mysql_example.html).
+[mysql_example.py](mysql_example.html).
  
 Tables created:
 * raw_table - raw import of entire CSV file
