@@ -161,7 +161,7 @@ else:
     print('starting active labeling...')
     dedupe.consoleLabel(deduper)
 
-    deduper.train(uncovered_dupes=1, ppc=1)
+    deduper.train()
 
     # When finished, save our training away to disk
     with open(training_file, 'w') as tf :
@@ -173,7 +173,7 @@ else:
     with open(settings_file, 'wb') as sf :
         deduper.writeSettings(sf)
 
-clustered_dupes = deduper.match(data_d, 0.5)
+clustered_dupes = deduper.match(data_d, 0.3)
 
 print('# duplicate sets', len(clustered_dupes))
 

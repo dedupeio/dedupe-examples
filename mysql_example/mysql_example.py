@@ -147,28 +147,20 @@ else:
     # use 'y', 'n' and 'u' keys to flag duplicates
     # press 'f' when you are finished
     dedupe.convenience.consoleLabel(deduper)
-
-    # Notice our two arguments here
-    #
-    # `ppc` limits the Proportion of Pairs Covered that we allow a
-    # predicate to cover. If a predicate puts together a fraction of
-    # possible pairs greater than the ppc, that predicate will be removed
-    # from consideration. As the size of the data increases, the user
-    # will generally want to reduce ppc.
-    #
-    # `pud` is the proportion of true dupes pairs in our training
-    # data that we are willing to accept will never be put into any
-    # block. If true duplicates are never in the same block, we will never
-    # compare them, and may never declare them to be duplicates.
-    #
-    # However, requiring that we cover every single true dupe pair may
-    # mean that we have to use blocks that put together many, many
-    # distinct pairs that we'll have to expensively, compare as well.
-    deduper.train(ppc=0.01, pud=0.10)
-
     # When finished, save our labeled, training pairs to disk
     with open(training_file, 'w') as tf:
         deduper.writeTraining(tf)
+
+    # Notice our two arguments here
+    #
+    # `maximum_comparisons` limits the total number of comparisons that
+    # a blocking rule can produce.
+    #
+    # `recall` is the proportion of true dupes pairs that the learned
+    # rules must cover. You may want to reduce this if your are making
+    # too many blocks and too many comparisons.
+    deduper.train(maximum_comparisons=500000000, recall=0.90)
+
     with open(settings_file, 'wb') as sf:
         deduper.writeSettings(sf)
 
