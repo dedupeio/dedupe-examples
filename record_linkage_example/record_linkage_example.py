@@ -161,8 +161,12 @@ else:
 # If we had more data, we would not pass in all the blocked data into
 # this function but a representative sample.
 
+# Set threshold
+threshold = linker.threshold(data_1, data_2)
+print('Threshold: {0}'.format(threshold))
+    
 print('clustering...')
-linked_records = linker.match(data_1, data_2, 0)
+linked_records = linker.match(data_1, data_2, threshold)
 
 print('# duplicate sets', len(linked_records))
 
