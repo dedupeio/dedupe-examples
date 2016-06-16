@@ -157,7 +157,7 @@ else:
     # too many blocks and too many comparisons.
     deduper.train(maximum_comparisons=500000000, recall=0.90)
 
-    with open(settings_file, 'w') as sf:
+    with open(settings_file, 'wb') as sf:
         deduper.writeSettings(sf)
 
     # We can now remove some of the memory hobbing objects we used
