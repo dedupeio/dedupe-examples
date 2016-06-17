@@ -41,10 +41,11 @@ optp.add_option('-v', '--verbose', dest='verbose', action='count',
                 )
 (opts, args) = optp.parse_args()
 log_level = logging.WARNING
-if opts.verbose == 1:
-    log_level = logging.INFO
-elif opts.verbose >= 2:
-    log_level = logging.DEBUG
+if opts.verbose:
+    if opts.verbose == 1:
+        log_level = logging.INFO
+    elif opts.verbose >= 2:
+        log_level = logging.DEBUG
 logging.getLogger().setLevel(log_level)
 
 # ## Setup
@@ -69,7 +70,6 @@ con = psycopg2.connect(database=db_conf['NAME'],
                        user=db_conf['USER'],
                        password=db_conf['PASSWORD'],
                        host=db_conf['HOST'],
-                       port=db_conf['PORT'],
                        cursor_factory=psycopg2.extras.RealDictCursor)
 
 c = con.cursor()
@@ -86,8 +86,8 @@ DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address, " \
 # ## Training
 
 if os.path.exists(settings_file):
-    print 'reading from ', settings_file
-    with open(settings_file) as sf:
+    print('reading from ', settings_file)
+    with open(settings_file, 'rb') as sf:
         deduper = dedupe.StaticDedupe(sf, num_cores=4)
 else:
 
@@ -129,13 +129,13 @@ else:
     # __Note:__ if you want to train from
     # scratch, delete the training_file
     if os.path.exists(training_file):
-        print 'reading labeled examples from ', training_file
+        print('reading labeled examples from ', training_file)
         with open(training_file) as tf:
             deduper.readTraining(tf)
 
     # ## Active learning
 
-    print 'starting active labeling...'
+    print('starting active labeling...')
     # Starts the training loop. Dedupe will find the next pair of records
     # it is least certain about and ask you to label them as duplicates
     # or not.
@@ -165,11 +165,11 @@ else:
     deduper.cleanupTraining()
 
 ## Blocking
-print 'blocking...'
+print('blocking...')
 
 # To run blocking on such a large set of data, we create a separate table
 # that contains blocking keys and record ids
-print 'creating blocking_map database'
+print('creating blocking_map database')
 c.execute("DROP TABLE IF EXISTS blocking_map")
 c.execute("CREATE TABLE blocking_map "
           "(block_key VARCHAR(200), donor_id INTEGER)")
@@ -177,7 +177,7 @@ c.execute("CREATE TABLE blocking_map "
 
 # If dedupe learned a Index Predicate, we have to take a pass
 # through the data and create indices.
-print 'creating inverted index'
+print('creating inverted index')
 
 for field in deduper.blocker.index_fields:
     c2 = con.cursor('c2')
@@ -188,7 +188,7 @@ for field in deduper.blocker.index_fields:
 
 # Now we are ready to write our blocking map table by creating a
 # generator that yields unique `(block_key, donor_id)` tuples.
-print 'writing blocking map'
+print('writing blocking map')
 
 c3 = con.cursor('donor_select2')
 c3.execute(DONOR_SELECT)
@@ -197,7 +197,7 @@ b_data = deduper.blocker(full_data)
 
 # Write out blocking map to CSV so we can quickly load in with
 # Postgres COPY
-csv_file = tempfile.NamedTemporaryFile(prefix='blocks_', delete=False)
+csv_file = tempfile.NamedTemporaryFile(prefix='blocks_', delete=False, mode='w')
 csv_writer = csv.writer(csv_file)
 csv_writer.writerows(b_data)
 c3.close()
@@ -217,7 +217,7 @@ con.commit()
 #
 # These steps, particularly the sorting will let us quickly create
 # blocks of data for comparison
-print 'prepare blocking table. this will probably take a while ...'
+print('prepare blocking table. this will probably take a while ...')
 
 logging.info("indexing block_key")
 c.execute("CREATE INDEX blocking_map_key_idx ON blocking_map (block_key)")
@@ -308,8 +308,8 @@ def candidates_gen(result_set):
             i += 1
 
             if i % 10000 == 0:
-                print i, "blocks"
-                print time.time() - start_time, "seconds"
+                print(i, "blocks")
+                print(time.time() - start_time, "seconds")
 
         smaller_ids = row['smaller_ids']
 
@@ -332,7 +332,7 @@ c4.execute("SELECT donor_id, city, name, "
            "USING (donor_id) "
            "ORDER BY (block_id)")
 
-print 'clustering...'
+print('clustering...')
 clustered_dupes = deduper.matchBlocks(candidates_gen(c4),
                                       threshold=0.5)
 
@@ -343,12 +343,13 @@ clustered_dupes = deduper.matchBlocks(candidates_gen(c4),
 # table
 c.execute("DROP TABLE IF EXISTS entity_map")
 
-print 'creating entity_map database'
+print('creating entity_map database')
 c.execute("CREATE TABLE entity_map "
           "(donor_id INTEGER, canon_id INTEGER, "
           " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
-csv_file = tempfile.NamedTemporaryFile(prefix='entity_map_', delete=False)
+csv_file = tempfile.NamedTemporaryFile(prefix='entity_map_', delete=False,
+                                       mode='w')
 csv_writer = csv.writer(csv_file)
 
 
@@ -372,8 +373,8 @@ c.execute("CREATE INDEX head_index ON entity_map (canon_id)")
 con.commit()
 
 # Print out the number of duplicates found
-print '# duplicate sets'
-print len(clustered_dupes)
+print('# duplicate sets')
+print(len(clustered_dupes))
 
 
 # ## Payoff
@@ -407,10 +408,10 @@ c.execute(
 )
 
 
-print "Top Donors (deduped)"
+print("Top Donors (deduped)")
 for row in c.fetchall():
     row['totals'] = locale.currency(row['totals'], grouping=True)
-    print '%(totals)20s: %(name)s' % row
+    print('%(totals)20s: %(name)s' % row)
 
 # Compare this to what we would have gotten if we hadn't done any
 # deduplication
@@ -424,14 +425,14 @@ c.execute(
     "LIMIT 10"
 )
 
-print "Top Donors (raw)"
+print("Top Donors (raw)")
 for row in c.fetchall():
     row['totals'] = locale.currency(row['totals'], grouping=True)
-    print '%(totals)20s: %(name)s' % row
+    print('%(totals)20s: %(name)s' % row)
 
 
 # Close our database connection
 c.close()
 con.close()
 
-print 'ran in', time.time() - start_time, 'seconds'
+print('ran in', time.time() - start_time, 'seconds')

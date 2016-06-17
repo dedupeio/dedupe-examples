@@ -57,7 +57,7 @@ See `mysql_example/README.md` for details
 **To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](https://datamade.github.com/dedupe-examples/docs/mysql_example.html).** 
 
 
-### [PostgreSQL big dedupe example](https://datamade.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset (Python 2.7 only)
+### [PostgreSQL big dedupe example](https://datamade.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset
 
 See `pgsql_big_dedupe_example/README.md` for details
 
