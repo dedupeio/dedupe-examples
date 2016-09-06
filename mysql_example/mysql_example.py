@@ -260,14 +260,17 @@ c.execute("DROP TABLE IF EXISTS covered_blocks")
 c.execute("DROP TABLE IF EXISTS smaller_coverage")
 
 # Many block_keys will only form blocks that contain a single
-# record. Since there are no comparisons possible withing such a
-# singleton block we can ignore them. 
+# record. Since there are no comparisons possible within such a
+# singleton block we can ignore them.
+#
+# Additionally, if more than one block_key forms identifical blocks
+# we will only consider one of them.
 logging.info("calculating plural_key")
 c.execute("CREATE TABLE plural_key "
           "(block_key VARCHAR(200), "
           " block_id INTEGER UNSIGNED AUTO_INCREMENT, "
           " PRIMARY KEY (block_id)) "
-          "(SELECT block_key FROM "
+          "(SELECT MIN(block_key) FROM "
           " (SELECT block_key, "
           "  GROUP_CONCAT(donor_id ORDER BY donor_id) AS block "
           "  FROM blocking_map "
