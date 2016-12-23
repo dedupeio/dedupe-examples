@@ -16,6 +16,22 @@ unzip master.zip
 cd dedupe-examples
 ```
 
+### Setup
+We recommend using [virtualenv](http://virtualenv.readthedocs.org/en/latest/virtualenv.html) and [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/install.html) for working in a virtualized development environment. [Read how to set up virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/).
+
+Once you have virtualenvwrapper set up,
+
+```bash
+mkvirtualenv dedupe-examples
+pip install -r requirements.txt
+```
+
+Afterwards, whenever you want to work on dedupe-examples,
+
+```bash
+workon dedupe-examples
+```
+
 ### [CSV example](https://datamade.github.com/dedupe-examples/docs/csv_example.html) - early childhood locations
 
 This example works with a list of early childhood education sites in Chicago from 10 different sources.
