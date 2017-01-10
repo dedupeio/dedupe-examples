@@ -151,15 +151,12 @@ else:
     with open(training_file, 'w') as tf:
         deduper.writeTraining(tf)
 
-    # Notice our two arguments here
-    #
-    # `maximum_comparisons` limits the total number of comparisons that
-    # a blocking rule can produce.
+    # Notice our the argument here
     #
     # `recall` is the proportion of true dupes pairs that the learned
     # rules must cover. You may want to reduce this if your are making
     # too many blocks and too many comparisons.
-    deduper.train(maximum_comparisons=500000000, recall=0.90)
+    deduper.train(recall=0.90)
 
     with open(settings_file, 'wb') as sf:
         deduper.writeSettings(sf)
