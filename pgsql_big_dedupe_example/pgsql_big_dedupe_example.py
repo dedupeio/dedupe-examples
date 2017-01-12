@@ -17,16 +17,17 @@ For smaller datasets (<10,000), see our
 [csv_example](http://datamade.github.io/dedupe-examples/docs/csv_example.html)
 """
 import os
-import csv
 import tempfile
 import time
 import logging
 import optparse
 import locale
 
+import unicodecsv
 import dj_database_url
 import psycopg2
 import psycopg2.extras
+import psycopg2.extensions
 
 import dedupe
 
@@ -71,6 +72,11 @@ con = psycopg2.connect(database=db_conf['NAME'],
                        password=db_conf['PASSWORD'],
                        host=db_conf['HOST'],
                        cursor_factory=psycopg2.extras.RealDictCursor)
+
+# To handle non-ascii data, psycopg2 needs to register a UNICODE
+# driver
+if sys.version_info[0] < 3:
+    psycopg2.extensions.register_type(psycopg2.extensions.UNICODE, con)
 
 c = con.cursor()
 
@@ -195,7 +201,7 @@ b_data = deduper.blocker(full_data)
 # Write out blocking map to CSV so we can quickly load in with
 # Postgres COPY
 csv_file = tempfile.NamedTemporaryFile(prefix='blocks_', delete=False, mode='w')
-csv_writer = csv.writer(csv_file)
+csv_writer = unicodecsv.writer(csv_file)
 csv_writer.writerows(b_data)
 c3.close()
 csv_file.close()
@@ -347,7 +353,7 @@ c.execute("CREATE TABLE entity_map "
 
 csv_file = tempfile.NamedTemporaryFile(prefix='entity_map_', delete=False,
                                        mode='w')
-csv_writer = csv.writer(csv_file)
+csv_writer = unicodecsv.writer(csv_file)
 
 
 for cluster, scores in clustered_dupes:

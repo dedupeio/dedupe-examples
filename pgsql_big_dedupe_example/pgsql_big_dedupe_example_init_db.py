@@ -14,14 +14,15 @@ Tables created:
 * recipients - all distinct campaign contribution recipients
 * contributions - contribution amounts tied to donor and recipients tables
 """
-import csv
 import os
 import urllib2
 import zipfile
 
+import unicodecsv
 import dj_database_url
 import psycopg2
 import psycopg2.extras
+import psycopg2.extensions
 import unidecode
 
 _file = 'Illinois-campaign-contributions'
@@ -53,7 +54,7 @@ if not os.path.exists(contributions_csv_file):
     print 'converting tab-delimited raw file to csv...'
     with open(contributions_txt_file, 'rU') as txt_file, \
             open(contributions_csv_file, 'w') as csv_file:
-        csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
+        csv_writer = unicodecsv.writer(csv_file, quoting=unicodecsv.QUOTE_ALL)
         for line in txt_file:
             if not all(ord(c) < 128 for c in line):
                 line = unidecode.unidecode(line)
@@ -77,6 +78,11 @@ conn = psycopg2.connect(database=db_conf['NAME'],
                         password=db_conf['PASSWORD'],
                         host=db_conf['HOST'],
                         port=db_conf['PORT'])
+                        
+# To handle non-ascii data, psycopg2 needs to register a UNICODE
+# driver
+if sys.version_info[0] < 3:
+    psycopg2.extensions.register_type(psycopg2.extensions.UNICODE, conn)
 
 c = conn.cursor()
 
