@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 This is a setup script for mysql_example.  It downloads a zip file of
-Illinois campaign contributions and loads them in t aMySQL database
+Illinois campaign contributions and loads them into a MySQL database
 named 'contributions'.
  
 __Note:__ You will need to run this script first before execuing
