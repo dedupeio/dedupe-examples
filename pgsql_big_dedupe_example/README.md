@@ -3,8 +3,16 @@
 To follow this example you need to:
 
 * Install dependencies `pip install -r requirements.txt`
-* Create a PostgreSQL database
-* Set an environment variable with your PostgreSQL connection details: `export DATABASE_URL=postgres://user:password@host/mydatabase`
+* Create a PostgreSQL database and setup the intarray extension
+* Set an environment variable with your PostgreSQL connection details
+
+This might look like
+
+```bash
+createdb campfin
+psql -d campfin -c "CREATE EXTENSION intarray"
+export DATABASE_URL=postgres:///campfin
+```
 
 Once that's all done you can run the example:
 

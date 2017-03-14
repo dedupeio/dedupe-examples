@@ -16,13 +16,14 @@ Tables created:
 """
 import csv
 import os
-import urllib2
 import zipfile
 
 import dj_database_url
 import psycopg2
 import psycopg2.extras
 import unidecode
+import requests
+
 
 _file = 'Illinois-campaign-contributions'
 contributions_zip_file = _file + '.txt.zip'
@@ -30,17 +31,16 @@ contributions_txt_file = _file + '.txt'
 contributions_csv_file = _file + '.csv'
 
 if not os.path.exists(contributions_zip_file):
-    print 'downloading', contributions_zip_file, '(~60mb) ...'
-    u = urllib2.urlopen(
-        'https://s3.amazonaws.com/dedupe-data/'
-        'Illinois-campaign-contributions.txt.zip')
+    print('downloading', contributions_zip_file, '(~60mb) ...')
+    u = requests.get(
+        'https://s3.amazonaws.com/dedupe-data/Illinois-campaign-contributions.txt.zip')
     localFile = open(contributions_zip_file, 'w')
     localFile.write(u.read())
     localFile.close()
 
 if not os.path.exists(contributions_txt_file):
     zip_file = zipfile.ZipFile(contributions_zip_file, 'r')
-    print 'extracting %s' % contributions_zip_file
+    print('extracting %s' % contributions_zip_file)
     zip_file_contents = zip_file.namelist()
     for f in zip_file_contents:
         if ('.txt' in f):
@@ -50,7 +50,7 @@ if not os.path.exists(contributions_txt_file):
 # Create a cleaned up CSV version of file with consistent row lengths.
 # Postgres COPY doesn't handle "ragged" files very well
 if not os.path.exists(contributions_csv_file):
-    print 'converting tab-delimited raw file to csv...'
+    print('converting tab-delimited raw file to csv...')
     with open(contributions_txt_file, 'rU') as txt_file, \
             open(contributions_csv_file, 'w') as csv_file:
         csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
@@ -59,8 +59,8 @@ if not os.path.exists(contributions_csv_file):
                 line = unidecode.unidecode(line)
             row = line.rstrip('\t\r\n').split('\t')
             if len(row) != 29:
-                print 'skipping bad row (length %s, expected 29):' % len(row)
-                print row
+                print('skipping bad row (length %s, expected 29):' % len(row))
+                print(row)
                 continue
             csv_writer.writerow(row)
 
@@ -80,7 +80,7 @@ conn = psycopg2.connect(database=db_conf['NAME'],
 
 c = conn.cursor()
 
-print 'importing raw data from csv...'
+print('importing raw data from csv...')
 c.execute("DROP TABLE IF EXISTS raw_table")
 c.execute("DROP TABLE IF EXISTS donors")
 c.execute("DROP TABLE IF EXISTS recipients")
@@ -121,7 +121,7 @@ with open(contributions_csv_file, 'rU') as csv_file:
 
 conn.commit()
 
-print 'creating donors table...'
+print('creating donors table...')
 c.execute("CREATE TABLE donors "
           "(donor_id SERIAL PRIMARY KEY, "
           " last_name VARCHAR(70), first_name VARCHAR(35), "
@@ -142,13 +142,13 @@ c.execute("INSERT INTO donors "
 
 conn.commit()
 
-print 'creating indexes on donors table...'
+print('creating indexes on donors table...')
 c.execute("CREATE INDEX donors_donor_info ON donors "
           "(last_name, first_name, address_1, address_2, city, "
           " state, zip)")
 conn.commit()
 
-print 'creating recipients table...'
+print('creating recipients table...')
 c.execute("CREATE TABLE recipients "
           "(recipient_id SERIAL PRIMARY KEY, name VARCHAR(70))")
 
@@ -157,7 +157,7 @@ c.execute("INSERT INTO recipients "
           "committee_name FROM raw_table")
 conn.commit()
 
-print 'creating contributions table...'
+print('creating contributions table...')
 c.execute("CREATE TABLE contributions "
           "(contribution_id INT, donor_id INT, recipient_id INT, "
           " report_type VARCHAR(24), date_recieved DATE, "
@@ -196,14 +196,14 @@ c.execute("INSERT INTO contributions "
           "donors.zip = LOWER(TRIM(raw_table.zip))")
 conn.commit()
 
-print 'creating indexes on contributions...'
+print('creating indexes on contributions...')
 c.execute("ALTER TABLE contributions ADD PRIMARY KEY(contribution_id)")
 c.execute("CREATE INDEX donor_idx ON contributions (donor_id)")
 c.execute("CREATE INDEX recipient_idx ON contributions (recipient_id)")
 
 conn.commit()
 
-print 'nullifying empty strings in donors...'
+print('nullifying empty strings in donors...')
 c.execute(
     "UPDATE donors "
     "SET "
@@ -221,7 +221,7 @@ c.execute(
 
 conn.commit()
 
-print 'creating processed_donors...'
+print('creating processed_donors...')
 c.execute("CREATE TABLE processed_donors AS "
           "(SELECT donor_id, "
           " LOWER(city) AS city, "
@@ -246,4 +246,4 @@ conn.commit()
 
 c.close()
 conn.close()
-print 'done'
+print('done')
