@@ -34,8 +34,8 @@ if not os.path.exists(contributions_zip_file):
     print('downloading', contributions_zip_file, '(~60mb) ...')
     u = requests.get(
         'https://s3.amazonaws.com/dedupe-data/Illinois-campaign-contributions.txt.zip')
-    localFile = open(contributions_zip_file, 'w')
-    localFile.write(u.read())
+    localFile = open(contributions_zip_file, 'wb')
+    localFile.write(u.content)
     localFile.close()
 
 if not os.path.exists(contributions_txt_file):
