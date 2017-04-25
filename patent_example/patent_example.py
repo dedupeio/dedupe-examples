@@ -70,13 +70,6 @@ def readData(filename, set_delim='**'):
     return data_d
 
 
-def philips(field_1, field_2) :
-    if 'philips' in field_1 and 'philips' in field_2 :
-        return 1
-    else :
-        return 0
-
-
 # These two generators will give us the corpora setting up the Set
 # distance metrics
 def classes(data) :
@@ -113,9 +106,6 @@ else:
          'variable name' : 'Name',
          'type': 'String', 
          'has missing' : True},
-        {'field' : 'Name',
-         'type' : 'Custom', 
-         'comparator' : philips},
         {'field' : 'LatLong', 
          'type' : 'LatLong', 
          'has missing' : True},
