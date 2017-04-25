@@ -173,7 +173,7 @@ else:
     with open(settings_file, 'wb') as sf :
         deduper.writeSettings(sf)
 
-clustered_dupes = deduper.match(data_d, 0.3)
+clustered_dupes = deduper.match(data_d, 0.2)
 
 print('# duplicate sets', len(clustered_dupes))
 
@@ -201,7 +201,7 @@ with open(output_file, 'w') as f_out, open(input_file) as f_in :
 
     for row_id, row in enumerate(reader):
         if row_id in cluster_membership:
-            cluser_id, score = cluster_membership[row_id]
+            cluster_id, score = cluster_membership[row_id]
         else:
             cluster_id, score = unique_id, None
             unique_id += 1
