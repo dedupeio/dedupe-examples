@@ -153,6 +153,10 @@ else:
 
     gazetteer.cleanupTraining()
 
+# Calc threshold
+print('Start calculating threshold')
+threshold = gazetteer.threshold(data_1, recall_weight=2.0)
+print('Threshold: {}'.format(threshold))
 
 # Try some matches
 matched = []
@@ -165,15 +169,20 @@ for s_key in random.sample(data_2.keys(), 10):
     print(values)
 
     try:
-        results = gazetteer.match(messy_data)
+        results = gazetteer.match(messy_data, threshold=threshold)
     except ValueError:
         results = None
         not_matched.append(messy_data)
 
     if results:
-        print(data_1[results[0][0][0][1]])
-        print('score: {}'.format(results[0][0][1]))
-        matched.append(messy_data)
+        key = results[0][0][0][1]
+
+        # ignore added records because in this example, the csv file can get out of sync with
+        # the settings file.
+        if not key.startswith('added'):
+            print(data_1[key])
+            print('score: {}'.format(results[0][0][1]))
+            matched.append(messy_data)
     else:
         print('No match')
 
@@ -192,12 +201,12 @@ gazetteer.index(new_data)
 # Confirm that the old matches still work
 for a_match in matched:
     # This will crash if there is not a match
-    results = gazetteer.match(a_match)
+    results = gazetteer.match(a_match, threshold=threshold)
 
 # Check that new data now matches
 for a_match in not_matched:
     # This will crash if there is not a match
-    results = gazetteer.match(a_match)
+    results = gazetteer.match(a_match, threshold=threshold)
 
 
 # Reload gazetteer and show that the not_matches do not match any more
@@ -208,7 +217,7 @@ with open(settings_file, 'rb') as sf:
 for a_match in not_matched:
     # This will crash if there is not a match
     try:
-        results = gazetteer.match(a_match)
+        results = gazetteer.match(a_match, threshold=threshold)
         print('***ERROR: should not match')
     except ValueError:
         pass
@@ -227,7 +236,7 @@ with open(settings_file, 'rb') as sf:
 
 for a_match in not_matched:
     # This will crash if there is not a match
-    results = gazetteer.match(a_match)
+    results = gazetteer.match(a_match, threshold=threshold)
 
 
 print('Done: everything worked!')
