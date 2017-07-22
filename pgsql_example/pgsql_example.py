@@ -47,6 +47,10 @@ c = con.cursor(cursor_factory=psy.extras.RealDictCursor)
 MAILING_SELECT = 'SELECT id,site_name, address, zip, phone FROM csv_messy_data'
 
 def preProcess(column):
+    try : # python 2/3 string differences
+        column = column.decode('utf8')
+    except AttributeError:
+        pass
     column = unidecode(column)
     column = re.sub('  +', ' ', column)
     column = re.sub('\n', ' ', column)
