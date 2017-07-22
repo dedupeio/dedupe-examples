@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>patent_example.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  <div class='section'>
+    <div class='docs'><h1>patent_example.py</h1></div>
+  </div>
+  <div class='clearall'>
+  <div class='section' id='section-0'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-0'>#</a>
+      </div>
+      <p>This code demonstrates how to use dedupe to disambiguate patent
+authors and demonstrates the Set and LatLong data types.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">from</span> <span class="nn">future.builtins</span> <span class="kn">import</span> <span class="nb">next</span>
+<span class="kn">from</span> <span class="nn">future.utils</span> <span class="kn">import</span> <span class="n">viewvalues</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">optparse</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<span class="kn">import</span> <span class="nn">dedupe</span>
+<span class="kn">from</span> <span class="nn">unidecode</span> <span class="kn">import</span> <span class="n">unidecode</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-1'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-1'>#</a>
+      </div>
+      <h2>Logging</h2>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-2'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-2'>#</a>
+      </div>
+      <p>Dedupe uses Python logging to show or suppress verbose output. Added
+for convenience.  To enable verbose logging, run <code>python
+patent_example.py -v</code></p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="n">optp</span> <span class="o">=</span> <span class="n">optparse</span><span class="o">.</span><span class="n">OptionParser</span><span class="p">()</span>
+<span class="n">optp</span><span class="o">.</span><span class="n">add_option</span><span class="p">(</span><span class="s1">&#39;-v&#39;</span><span class="p">,</span> <span class="s1">&#39;--verbose&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;verbose&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;count&#39;</span><span class="p">,</span>
+                <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Increase verbosity (specify multiple times for more)&#39;</span>
+                <span class="p">)</span>
+<span class="p">(</span><span class="n">opts</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="o">=</span> <span class="n">optp</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+<span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span> 
+
+<span class="k">if</span> <span class="n">opts</span><span class="o">.</span><span class="n">verbose</span> <span class="p">:</span>
+    <span class="k">if</span> <span class="n">opts</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">:</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
+    <span class="k">elif</span> <span class="n">opts</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="p">:</span>
+        <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-3'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-3'>#</a>
+      </div>
+      <p>Remap columns for the following cases:
+- Lat and Long are mapped into a single LatLong tuple
+- Class and Coauthor are stored as delimited strings but mapped into 
+  tuples</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">readData</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">set_delim</span><span class="o">=</span><span class="s1">&#39;**&#39;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-4'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-4'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="n">data_d</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reader</span><span class="p">):</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Lat&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Lng&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;0.0&#39;</span> <span class="p">:</span>
+                <span class="n">row</span><span class="p">[</span><span class="s1">&#39;LatLong&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">else</span> <span class="p">:</span>
+                <span class="n">row</span><span class="p">[</span><span class="s1">&#39;LatLong&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Lat&#39;</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Lng&#39;</span><span class="p">]))</span>
+            <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Class&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;Class&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">set_delim</span><span class="p">)))</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Class&#39;</span><span class="p">]</span> <span class="k">else</span> <span class="bp">None</span>
+            <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Coauthor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">([</span><span class="n">author</span> <span class="k">for</span> <span class="n">author</span>
+                                            <span class="ow">in</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Coauthor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">set_delim</span><span class="p">)</span>
+                                            <span class="k">if</span> <span class="n">author</span> <span class="o">!=</span> <span class="s1">&#39;none&#39;</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span> <span class="p">:</span>
+                <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+            
+            <span class="n">data_d</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span>
+
+    <span class="k">return</span> <span class="n">data_d</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-5'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-5'>#</a>
+      </div>
+      <p>These two generators will give us the corpora setting up the Set
+distance metrics</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">classes</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">:</span>
+    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">viewvalues</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">yield</span> <span class="n">record</span><span class="p">[</span><span class="s1">&#39;Class&#39;</span><span class="p">]</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-6'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-6'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">coauthors</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">:</span>
+    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">viewvalues</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">yield</span> <span class="n">record</span><span class="p">[</span><span class="s1">&#39;Coauthor&#39;</span><span class="p">]</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-7'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-7'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">names</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">:</span>
+    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">viewvalues</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="p">:</span>
+        <span class="k">yield</span> <span class="n">record</span><span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">]</span>
+
+<span class="n">input_file</span> <span class="o">=</span> <span class="s1">&#39;patstat_input.csv&#39;</span>
+<span class="n">output_file</span> <span class="o">=</span> <span class="s1">&#39;patstat_output.csv&#39;</span>
+<span class="n">settings_file</span> <span class="o">=</span> <span class="s1">&#39;patstat_settings.json&#39;</span>
+<span class="n">training_file</span> <span class="o">=</span> <span class="s1">&#39;patstat_training.json&#39;</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;importing data ...&#39;</span><span class="p">)</span>
+<span class="n">data_d</span> <span class="o">=</span> <span class="n">readData</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-8'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-8'>#</a>
+      </div>
+      <h2>Training</h2>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">settings_file</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;reading from&#39;</span><span class="p">,</span> <span class="n">settings_file</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_file</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span> <span class="p">:</span>
+        <span class="n">deduper</span> <span class="o">=</span> <span class="n">dedupe</span><span class="o">.</span><span class="n">StaticDedupe</span><span class="p">(</span><span class="n">sf</span><span class="p">,</span> <span class="n">num_cores</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="k">else</span><span class="p">:</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-9'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-9'>#</a>
+      </div>
+      <p>Define the fields dedupe will pay attention to</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s1">&#39;field&#39;</span> <span class="p">:</span> <span class="s1">&#39;Name&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;variable name&#39;</span> <span class="p">:</span> <span class="s1">&#39;Name&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;String&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;has missing&#39;</span> <span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+        <span class="p">{</span><span class="s1">&#39;field&#39;</span> <span class="p">:</span> <span class="s1">&#39;LatLong&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;type&#39;</span> <span class="p">:</span> <span class="s1">&#39;LatLong&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;has missing&#39;</span> <span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+        <span class="p">{</span><span class="s1">&#39;field&#39;</span> <span class="p">:</span> <span class="s1">&#39;Class&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;variable name&#39;</span> <span class="p">:</span> <span class="s1">&#39;Class&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Set&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;corpus&#39;</span> <span class="p">:</span> <span class="n">classes</span><span class="p">(</span><span class="n">data_d</span><span class="p">),</span>
+         <span class="s1">&#39;has missing&#39;</span> <span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+        <span class="p">{</span><span class="s1">&#39;field&#39;</span> <span class="p">:</span> <span class="s1">&#39;Coauthor&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;variable name&#39;</span> <span class="p">:</span> <span class="s1">&#39;Coauthor&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;Set&#39;</span><span class="p">,</span> 
+         <span class="s1">&#39;corpus&#39;</span> <span class="p">:</span> <span class="n">coauthors</span><span class="p">(</span><span class="n">data_d</span><span class="p">),</span>
+         <span class="s1">&#39;has missing&#39;</span> <span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+        <span class="p">{</span><span class="s1">&#39;field&#39;</span> <span class="p">:</span> <span class="s1">&#39;Name&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;variable name&#39;</span> <span class="p">:</span> <span class="s1">&#39;Name Text&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;type&#39;</span> <span class="p">:</span> <span class="s1">&#39;Text&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;corpus&#39;</span> <span class="p">:</span> <span class="n">names</span><span class="p">(</span><span class="n">data_d</span><span class="p">),</span>
+         <span class="s1">&#39;has missing&#39;</span> <span class="p">:</span> <span class="bp">True</span><span class="p">},</span>
+        <span class="p">{</span><span class="s1">&#39;type&#39;</span> <span class="p">:</span> <span class="s1">&#39;Interaction&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;interaction variables&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Name Text&#39;</span><span class="p">]}</span>
+    <span class="p">]</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-10'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-10'>#</a>
+      </div>
+      <p>Create a new deduper object and pass our data model to it.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="n">deduper</span> <span class="o">=</span> <span class="n">dedupe</span><span class="o">.</span><span class="n">Dedupe</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">num_cores</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-11'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-11'>#</a>
+      </div>
+      <p>To train dedupe, we feed it a sample of records.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="n">deduper</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">data_d</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-12'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-12'>#</a>
+      </div>
+      <p>If we have training data saved from a previous run of dedupe,
+look for it an load it in.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">training_file</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;reading labeled examples from &#39;</span><span class="p">,</span> <span class="n">training_file</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">training_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">tf</span> <span class="p">:</span>
+            <span class="n">deduper</span><span class="o">.</span><span class="n">readTraining</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-13'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-13'>#</a>
+      </div>
+      <h2>Active learning</h2>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-14'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-14'>#</a>
+      </div>
+      <p>Starts the training loop. Dedupe will find the next pair of records
+it is least certain about and ask you to label them as duplicates
+or not.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-15'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-15'>#</a>
+      </div>
+      <p>use 'y', 'n' and 'u' keys to flag duplicates
+press 'f' when you are finished</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;starting active labeling...&#39;</span><span class="p">)</span>
+    <span class="n">dedupe</span><span class="o">.</span><span class="n">consoleLabel</span><span class="p">(</span><span class="n">deduper</span><span class="p">)</span>
+
+    <span class="n">deduper</span><span class="o">.</span><span class="n">train</span><span class="p">()</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-16'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-16'>#</a>
+      </div>
+      <p>When finished, save our training away to disk</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">training_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tf</span> <span class="p">:</span>
+        <span class="n">deduper</span><span class="o">.</span><span class="n">writeTraining</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-17'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-17'>#</a>
+      </div>
+      <p>Save our weights and predicates to disk.  If the settings file
+exists, we will skip all the training and learning next time we run
+this file.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_file</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span> <span class="p">:</span>
+        <span class="n">deduper</span><span class="o">.</span><span class="n">writeSettings</span><span class="p">(</span><span class="n">sf</span><span class="p">)</span>
+
+<span class="n">clustered_dupes</span> <span class="o">=</span> <span class="n">deduper</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">data_d</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;# duplicate sets&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">clustered_dupes</span><span class="p">))</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-18'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-18'>#</a>
+      </div>
+      <h2>Writing Results</h2>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-19'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-19'>#</a>
+      </div>
+      <p>Write our original data back out to a CSV with a new column called 
+'Cluster ID' which indicates which records refer to each other.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="n">cluster_membership</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">cluster_id</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">cluster_id</span><span class="p">,</span> <span class="p">(</span><span class="n">cluster</span><span class="p">,</span> <span class="n">scores</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">clustered_dupes</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">record_id</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">cluster</span><span class="p">,</span> <span class="n">scores</span><span class="p">):</span>
+        <span class="n">cluster_membership</span><span class="p">[</span><span class="n">record_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cluster_id</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
+
+<span class="n">unique_id</span> <span class="o">=</span> <span class="n">cluster_id</span> <span class="o">+</span> <span class="mi">1</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_out</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_in</span> <span class="p">:</span>
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">f_out</span><span class="p">)</span>
+    <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">f_in</span><span class="p">)</span>
+
+    <span class="n">heading_row</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span>
+    <span class="n">heading_row</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Score&#39;</span><span class="p">)</span>
+    <span class="n">heading_row</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Cluster ID&#39;</span><span class="p">)</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">heading_row</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">row_id</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reader</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">row_id</span> <span class="ow">in</span> <span class="n">cluster_membership</span><span class="p">:</span>
+            <span class="n">cluster_id</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">cluster_membership</span><span class="p">[</span><span class="n">row_id</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cluster_id</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">unique_id</span><span class="p">,</span> <span class="bp">None</span>
+            <span class="n">unique_id</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">row</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
+        <span class="n">row</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cluster_id</span><span class="p">)</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+</pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+</div>
+</body>

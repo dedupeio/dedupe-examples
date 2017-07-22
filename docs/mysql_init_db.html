@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>mysql_init_db.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  <div class='section'>
+    <div class='docs'><h1>mysql_init_db.py</h1></div>
+  </div>
+  <div class='clearall'>
+  <div class='section' id='section-0'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-0'>#</a>
+      </div>
+      <p>This is a setup script for mysql_example.  It downloads a zip file of
+Illinois campaign contributions and loads them into a MySQL database
+named 'contributions'.</p>
+<p><strong>Note:</strong> You will need to run this script first before execuing
+<a href="mysql_example.html">mysql_example.py</a>.</p>
+<p>Tables created:
+<em> raw_table - raw import of entire CSV file
+</em> donors - all distinct donors based on name and address
+<em> recipients - all distinct campaign contribution recipients
+</em> contributions - contribution amounts tied to donor and recipients tables</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">zipfile</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">urllib2</span> <span class="kn">import</span> <span class="n">urlopen</span>  <span class="c1"># Python2</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">urllib.request</span> <span class="kn">import</span> <span class="n">urlopen</span>   <span class="c1"># Python3</span>
+
+<span class="kn">import</span> <span class="nn">MySQLdb</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="n">MySQLdb</span><span class="o">.</span><span class="n">Warning</span><span class="p">)</span>
+
+<span class="n">contributions_zip_file</span> <span class="o">=</span> <span class="s1">&#39;Illinois-campaign-contributions.txt.zip&#39;</span>
+<span class="n">contributions_txt_file</span> <span class="o">=</span> <span class="s1">&#39;Illinois-campaign-contributions.txt&#39;</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">contributions_zip_file</span><span class="p">)</span> <span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;downloading&#39;</span><span class="p">,</span> <span class="n">contributions_zip_file</span><span class="p">,</span> <span class="s1">&#39;(~60mb) ...&#39;</span><span class="p">)</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">urlopen</span><span class="p">(</span><span class="s1">&#39;https://s3.amazonaws.com/dedupe-data/Illinois-campaign-contributions.txt.zip&#39;</span><span class="p">)</span>
+    <span class="n">localFile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">contributions_zip_file</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
+    <span class="n">localFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+    <span class="n">localFile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">contributions_txt_file</span><span class="p">)</span> <span class="p">:</span>
+    <span class="n">zip_file</span> <span class="o">=</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">contributions_zip_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;extracting </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">contributions_zip_file</span><span class="p">)</span>
+    <span class="n">zip_file_contents</span> <span class="o">=</span> <span class="n">zip_file</span><span class="o">.</span><span class="n">namelist</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">zip_file_contents</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;.txt&#39;</span> <span class="ow">in</span> <span class="n">f</span><span class="p">):</span>
+            <span class="n">zip_file</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">zip_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">conn</span> <span class="o">=</span> <span class="n">MySQLdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">read_default_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/mysql.cnf&#39;</span><span class="p">,</span> 
+                       <span class="n">local_infile</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                       <span class="n">db</span><span class="o">=</span><span class="s1">&#39;contributions&#39;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;importing raw data from csv...&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS raw_table&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS donors&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS recipients&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS contributions&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS processed_donors&quot;</span><span class="p">)</span>
+
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE raw_table &quot;</span>
+          <span class="s2">&quot;(reciept_id INT, last_name VARCHAR(70), first_name VARCHAR(35), &quot;</span>
+          <span class="s2">&quot; address_1 VARCHAR(35), address_2 VARCHAR(36), city VARCHAR(20), &quot;</span>
+          <span class="s2">&quot; state VARCHAR(15), zip VARCHAR(11), report_type VARCHAR(24), &quot;</span>
+          <span class="s2">&quot; date_recieved VARCHAR(10), loan_amount VARCHAR(12), &quot;</span>
+          <span class="s2">&quot; amount VARCHAR(23), receipt_type VARCHAR(23), &quot;</span>
+          <span class="s2">&quot; employer VARCHAR(70), occupation VARCHAR(40), &quot;</span>
+          <span class="s2">&quot; vendor_last_name VARCHAR(70), vendor_first_name VARCHAR(20), &quot;</span>
+          <span class="s2">&quot; vendor_address_1 VARCHAR(35), vendor_address_2 VARCHAR(31), &quot;</span>
+          <span class="s2">&quot; vendor_city VARCHAR(20), vendor_state VARCHAR(10), &quot;</span>
+          <span class="s2">&quot; vendor_zip VARCHAR(10), description VARCHAR(90), &quot;</span>
+          <span class="s2">&quot; election_type VARCHAR(10), election_year VARCHAR(10), &quot;</span>
+          <span class="s2">&quot; report_period_begin VARCHAR(10), report_period_end VARCHAR(33), &quot;</span>
+          <span class="s2">&quot; committee_name VARCHAR(70), committee_id VARCHAR(37)) &quot;</span>
+          <span class="s2">&quot;CHARACTER SET utf8 COLLATE utf8_unicode_ci&quot;</span><span class="p">)</span>
+
+
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;LOAD DATA LOCAL INFILE </span><span class="si">%s</span><span class="s2"> INTO TABLE raw_table &quot;</span>
+          <span class="s2">&quot;FIELDS TERMINATED BY &#39;</span><span class="se">\t</span><span class="s2">&#39; LINES TERMINATED BY &#39;</span><span class="se">\r\n</span><span class="s2">&#39; &quot;</span> 
+          <span class="s2">&quot;IGNORE 1 LINES &quot;</span>
+          <span class="s2">&quot;(reciept_id, last_name, first_name, &quot;</span>
+          <span class="s2">&quot; address_1, address_2, city, state, &quot;</span>
+          <span class="s2">&quot; zip, report_type, date_recieved, &quot;</span>
+          <span class="s2">&quot; loan_amount, amount, receipt_type, &quot;</span>
+          <span class="s2">&quot; employer, occupation, vendor_last_name, &quot;</span>
+          <span class="s2">&quot; vendor_first_name, vendor_address_1, &quot;</span>
+          <span class="s2">&quot; vendor_address_2, vendor_city, vendor_state, &quot;</span>
+          <span class="s2">&quot; vendor_zip, description, election_type, &quot;</span>
+          <span class="s2">&quot; election_year, &quot;</span>
+          <span class="s2">&quot; report_period_begin, report_period_end, &quot;</span>
+          <span class="s2">&quot; committee_name, committee_id, @dummy)&quot;</span><span class="p">,</span>
+          <span class="p">(</span><span class="n">contributions_txt_file</span><span class="p">,))</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating donors table...&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE donors &quot;</span>
+          <span class="s2">&quot;(donor_id INTEGER PRIMARY KEY AUTO_INCREMENT, &quot;</span>
+          <span class="s2">&quot; last_name VARCHAR(70), first_name VARCHAR(35), &quot;</span>
+          <span class="s2">&quot; address_1 VARCHAR(35), address_2 VARCHAR(36), &quot;</span>
+          <span class="s2">&quot; city VARCHAR(20), state VARCHAR(15), &quot;</span>
+          <span class="s2">&quot; zip VARCHAR(11), employer VARCHAR(70), &quot;</span>
+          <span class="s2">&quot; occupation VARCHAR(40)) &quot;</span>
+          <span class="s2">&quot;CHARACTER SET utf8 COLLATE utf8_unicode_ci&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO donors &quot;</span>
+          <span class="s2">&quot;(first_name, last_name, address_1,&quot;</span>
+          <span class="s2">&quot; address_2, city, state, zip, employer, occupation) &quot;</span>
+          <span class="s2">&quot;SELECT DISTINCT &quot;</span>
+          <span class="s2">&quot;TRIM(first_name), TRIM(last_name), TRIM(address_1),  &quot;</span>
+          <span class="s2">&quot;TRIM(address_2), TRIM(city), TRIM(state), TRIM(zip), &quot;</span>
+          <span class="s2">&quot;TRIM(employer), TRIM(occupation) &quot;</span>
+          <span class="s2">&quot;FROM raw_table&quot;</span><span class="p">)</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating indexes on donors table&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX donors_donor_info ON donors &quot;</span>
+          <span class="s2">&quot;(last_name, first_name, address_1, address_2, city, &quot;</span>
+          <span class="s2">&quot; state, zip)&quot;</span><span class="p">)</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating recipients table...&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE recipients &quot;</span>
+          <span class="s2">&quot;(recipient_id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(70)) &quot;</span>
+          <span class="s2">&quot;CHARACTER SET utf8 COLLATE utf8_unicode_ci&quot;</span><span class="p">)</span>
+
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT IGNORE INTO recipients &quot;</span>
+          <span class="s2">&quot;SELECT DISTINCT committee_id, committee_name FROM raw_table&quot;</span><span class="p">)</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating contributions table&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE contributions &quot;</span>
+          <span class="s2">&quot;(contribution_id INT, donor_id INT, recipient_id INT, &quot;</span>
+          <span class="s2">&quot; report_type VARCHAR(24), date_recieved DATE, &quot;</span>
+          <span class="s2">&quot; loan_amount VARCHAR(12), amount VARCHAR(23), &quot;</span>
+          <span class="s2">&quot; receipt_type VARCHAR(23), &quot;</span>
+          <span class="s2">&quot; vendor_last_name VARCHAR(70), &quot;</span>
+          <span class="s2">&quot; vendor_first_name VARCHAR(20), &quot;</span>
+          <span class="s2">&quot; vendor_address_1 VARCHAR(35), vendor_address_2 VARCHAR(31), &quot;</span>
+          <span class="s2">&quot; vendor_city VARCHAR(20), vendor_state VARCHAR(10), &quot;</span>
+          <span class="s2">&quot; vendor_zip VARCHAR(10), description VARCHAR(90), &quot;</span>
+          <span class="s2">&quot; election_type VARCHAR(10), election_year VARCHAR(10), &quot;</span>
+          <span class="s2">&quot; report_period_begin DATE, report_period_end DATE) &quot;</span>
+          <span class="s2">&quot;CHARACTER SET utf8 COLLATE utf8_unicode_ci&quot;</span><span class="p">)</span>
+
+
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO contributions &quot;</span>
+          <span class="s2">&quot;SELECT reciept_id, donors.donor_id, committee_id, &quot;</span>
+          <span class="s2">&quot; report_type, STR_TO_DATE(date_recieved, &#39;%m/</span><span class="si">%d</span><span class="s2">/%Y&#39;), &quot;</span>
+          <span class="s2">&quot; loan_amount, amount, &quot;</span>
+          <span class="s2">&quot; receipt_type, vendor_last_name , &quot;</span>
+          <span class="s2">&quot; vendor_first_name, vendor_address_1, vendor_address_2, &quot;</span>
+          <span class="s2">&quot; vendor_city, vendor_state, vendor_zip, description, &quot;</span>
+          <span class="s2">&quot; election_type, election_year, &quot;</span>
+          <span class="s2">&quot; STR_TO_DATE(report_period_begin, &#39;%m/</span><span class="si">%d</span><span class="s2">/%Y&#39;), &quot;</span>
+          <span class="s2">&quot; STR_TO_DATE(report_period_end, &#39;%m/</span><span class="si">%d</span><span class="s2">/%Y&#39;) &quot;</span>
+          <span class="s2">&quot;FROM raw_table JOIN donors ON &quot;</span>
+          <span class="s2">&quot;donors.first_name = TRIM(raw_table.first_name) AND &quot;</span>
+          <span class="s2">&quot;donors.last_name = TRIM(raw_table.last_name) AND &quot;</span>
+          <span class="s2">&quot;donors.address_1 = TRIM(raw_table.address_1) AND &quot;</span>
+          <span class="s2">&quot;donors.address_2 = TRIM(raw_table.address_2) AND &quot;</span>
+          <span class="s2">&quot;donors.city = TRIM(raw_table.city) AND &quot;</span>
+          <span class="s2">&quot;donors.state = TRIM(raw_table.state) AND &quot;</span>
+          <span class="s2">&quot;donors.employer = TRIM(raw_table.employer) AND &quot;</span>
+          <span class="s2">&quot;donors.occupation = TRIM(raw_table.occupation) AND &quot;</span>
+          <span class="s2">&quot;donors.zip = TRIM(raw_table.zip)&quot;</span><span class="p">)</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating indexes on contributions&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;ALTER TABLE contributions ADD PRIMARY KEY(contribution_id)&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX donor_idx ON contributions (donor_id)&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX recipient_idx ON contributions (recipient_id)&quot;</span><span class="p">)</span>
+
+
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;nullifying empty strings in donors&#39;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;UPDATE donors &quot;</span>
+          <span class="s2">&quot;SET &quot;</span>
+          <span class="s2">&quot;first_name = CASE first_name WHEN &#39;&#39; THEN NULL ELSE first_name END, &quot;</span>
+          <span class="s2">&quot;last_name = CASE last_name WHEN &#39;&#39; THEN NULL ELSE last_name END, &quot;</span>
+          <span class="s2">&quot;address_1 = CASE address_1 WHEN &#39;&#39; THEN NULL ELSE address_1 END, &quot;</span>
+          <span class="s2">&quot;address_2 = CASE address_2 WHEN &#39;&#39; THEN NULL ELSE address_2 END, &quot;</span>
+          <span class="s2">&quot;city = CASE city WHEN &#39;&#39; THEN NULL ELSE city END, &quot;</span>
+          <span class="s2">&quot;state = CASE state WHEN &#39;&#39; THEN NULL ELSE state END, &quot;</span>
+          <span class="s2">&quot;employer = CASE employer WHEN &#39;&#39; THEN NULL ELSE employer END, &quot;</span> 
+          <span class="s2">&quot;occupation = CASE occupation WHEN &#39;&#39; THEN NULL ELSE occupation END, &quot;</span> 
+          <span class="s2">&quot;zip = CASE zip WHEN &#39;&#39; THEN NULL ELSE zip END&quot;</span><span class="p">)</span>
+
+
+<span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE processed_donors AS &quot;</span> 
+          <span class="s2">&quot;(SELECT donor_id, &quot;</span> 
+          <span class="s2">&quot; LOWER(city) AS city, &quot;</span> 
+          <span class="s2">&quot; CASE WHEN (first_name IS NULL AND last_name IS NULL) &quot;</span>
+          <span class="s2">&quot;      THEN NULL &quot;</span>
+          <span class="s2">&quot;      ELSE LOWER(CONCAT_WS(&#39; &#39;, first_name, last_name)) &quot;</span>
+          <span class="s2">&quot; END AS name, &quot;</span> 
+          <span class="s2">&quot; LOWER(zip) AS zip, &quot;</span> 
+          <span class="s2">&quot; LOWER(state) AS state, &quot;</span> 
+          <span class="s2">&quot; CASE WHEN (address_1 IS NULL AND address_2 IS NULL) &quot;</span>
+          <span class="s2">&quot;      THEN NULL &quot;</span>
+          <span class="s2">&quot;      ELSE LOWER(CONCAT_WS(&#39; &#39;, address_1, address_2)) &quot;</span>
+          <span class="s2">&quot; END AS address, &quot;</span> 
+          <span class="s2">&quot; LOWER(occupation) AS occupation, &quot;</span>
+          <span class="s2">&quot; LOWER(employer) AS employer, &quot;</span>
+          <span class="s2">&quot; ISNULL(first_name) AS person &quot;</span>
+          <span class="s2">&quot; FROM donors)&quot;</span><span class="p">)</span>
+ 
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX donor_idx ON processed_donors (donor_id)&quot;</span><span class="p">)</span>
+
+<span class="n">c</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="k">print</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">)</span>
+
+</pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+</div>
+</body>
