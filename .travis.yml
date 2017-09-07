@@ -11,6 +11,7 @@ script:
   - pycco patent_example/patent_example.py
   - pycco pgsql_example/pgsql_example.py
   - pycco record_linkage_example/record_linkage_example.py
+  - pycco gazetteer_example/gazetteer_example.py
   - pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
 after_success:
   - git config user.name "Travis CI"
