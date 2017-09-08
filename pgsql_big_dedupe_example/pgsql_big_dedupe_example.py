@@ -208,6 +208,8 @@ os.remove(csv_file.name)
 
 con.commit()
 
+# free up memory by removing indices
+deduper.blocker.resetIndices()
 
 # Remove blocks that contain only one record, sort by block key and
 # donor, key and index blocking map.
