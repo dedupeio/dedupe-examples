@@ -330,6 +330,9 @@ print('clustering...')
 clustered_dupes = deduper.matchBlocks(candidates_gen(c4),
                                       threshold=0.5)
 
+# matchBlocks returns a generator. Turn it into a list
+clustered_dupes = len(clustered_dupes)
+
 ## Writing out results
 
 # We now have a sequence of tuples of donor ids that dedupe believes

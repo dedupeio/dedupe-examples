@@ -32,6 +32,7 @@ import MySQLdb
 import MySQLdb.cursors
 
 import dedupe
+import dedupe.backport
 
 # ## Logging
 
@@ -365,6 +366,9 @@ c.execute("SELECT donor_id, city, name, "
 print('clustering...')
 clustered_dupes = deduper.matchBlocks(candidates_gen(c),
                                       threshold=0.5)
+
+# matchBlocks returns a generator. Turn it into a list
+clustered_dupes = len(clustered_dupes)
 
 ## Writing out results
 
