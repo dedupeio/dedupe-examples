@@ -331,7 +331,7 @@ clustered_dupes = deduper.matchBlocks(candidates_gen(c4),
                                       threshold=0.5)
 
 # matchBlocks returns a generator. Turn it into a list
-clustered_dupes = len(clustered_dupes)
+clustered_dupes = list(clustered_dupes)
 
 ## Writing out results
 
