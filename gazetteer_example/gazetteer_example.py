@@ -158,11 +158,11 @@ else:
 gazetteer.index(canonical)
 # Calc threshold
 print('Start calculating threshold')
-threshold = gazetteer.threshold(messy, recall_weight=2.0)
+threshold = gazetteer.threshold(messy, recall_weight=1.0)
 print('Threshold: {}'.format(threshold))
 
 
-results = gazetteer.match(messy, threshold=threshold, n_matches=1)
+results = gazetteer.match(messy, threshold=threshold, n_matches=1, generator=True)
 
 cluster_membership = {}
 cluster_id = None
