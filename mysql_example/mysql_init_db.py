@@ -103,6 +103,14 @@ c.execute("DELETE FROM raw_table WHERE LENGTH(date_recieved) < 10")
 # set empty, non-zero, strings in date columns to null
 c.execute("UPDATE raw_table SET report_period_begin = NULL WHERE LENGTH(report_period_begin) < 10")
 c.execute("UPDATE raw_table SET report_period_end = NULL WHERE LENGTH(report_period_end) < 10")
+
+#committee ID is requred. Remove the 2 rows that don't have it.
+c.execute("DELETE FROM raw_table WHERE committee_id=''");
+
+# There's a record with a date stuck in the committee_id column, which causes
+# problems when inserting into the contributions table below. Get rid of it this 
+# way.
+c.execute("DELETE FROM raw_table WHERE LENGTH( committee_id ) > 9")
 conn.commit()
 
 
