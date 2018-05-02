@@ -296,7 +296,7 @@ c.execute("ALTER TABLE plural_block "
 # ids, so we'll also increase the maximum string length to try to
 # avoid this.
 
-c.execute("SET group_concat_max_len = 2048")
+c.execute("SET group_concat_max_len = 10192")
 
 
 logging.info("creating covered_blocks")
