@@ -95,7 +95,13 @@ c.execute("LOAD DATA LOCAL INFILE %s INTO TABLE raw_table "
           " report_period_begin, report_period_end, "
           " committee_name, committee_id, @dummy)",
           (contributions_txt_file,))
+
+# Remove the very few records that mess up the demo 
+# (demo purposes only! Don't do something like this in production)
+c.execute("DELETE FROM raw_table WHERE LENGTH(date_recieved) < 10")
 conn.commit()
+
+
 
 print('creating donors table...')
 c.execute("CREATE TABLE donors "
