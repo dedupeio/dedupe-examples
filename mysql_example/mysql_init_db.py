@@ -99,6 +99,10 @@ c.execute("LOAD DATA LOCAL INFILE %s INTO TABLE raw_table "
 # Remove the very few records that mess up the demo 
 # (demo purposes only! Don't do something like this in production)
 c.execute("DELETE FROM raw_table WHERE LENGTH(date_recieved) < 10")
+
+# set empty, non-zero, strings in date columns to null
+c.execute("UPDATE raw_table SET report_period_begin = NULL WHERE LENGTH(report_period_begin) < 10")
+c.execute("UPDATE raw_table SET report_period_end = NULL WHERE LENGTH(report_period_end) < 10")
 conn.commit()
 
 
