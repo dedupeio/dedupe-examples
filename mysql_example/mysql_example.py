@@ -34,6 +34,7 @@ import MySQLdb.cursors
 import dedupe
 import dedupe.backport
 
+
 # ## Logging
 
 # Dedupe uses Python logging to show or suppress verbose output. Added
@@ -80,6 +81,9 @@ con2 = MySQLdb.connect(db='contributions',
 c2 = con2.cursor()
 c2.execute("SET net_write_timeout = 3600")
 
+# Increase max GROUP_CONCAT() length. The ability to concatenate long strings
+# is needed a few times down below.
+c.execute("SET group_concat_max_len = 10192")
 
 # We'll be using variations on this following select statement to pull
 # in campaign donor info.
@@ -293,10 +297,8 @@ c.execute("ALTER TABLE plural_block "
 # keep track of all the block_ids that are associated with a
 # particular donor records. We'll use MySQL's GROUP_CONCAT function to
 # do this. This function will truncate very long lists of associated
-# ids, so we'll also increase the maximum string length to try to
-# avoid this.
-
-c.execute("SET group_concat_max_len = 2048")
+# ids, so the maximum string length to try to was increased just after the
+# connection was initialized at the top of this file to try to avoid this.
 
 
 logging.info("creating covered_blocks")
