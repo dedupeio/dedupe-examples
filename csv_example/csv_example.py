@@ -152,11 +152,18 @@ threshold = deduper.threshold(data_d, recall_weight=1)
 
 # ## Clustering
 
-# `match` will return sets of record IDs that dedupe
-# believes are all referring to the same entity.
+# to bypass blocking, you can use the matchBlocks method and a single
+# "block" that contains all the recors
+single_block = tuple((record_id, record, set())
+                     for record_id, record
+                     in data_d.items())
 
-print('clustering...')
-clustered_dupes = deduper.match(data_d, threshold)
+total_comparisons = len(data_d) * (len(data_d) - 1) * 0.5
+print("Total Comparisons: ", int(total_comparisons))
+
+clustered_dupes = deduper.matchBlocks((single_block,))
+
+clustered_dupes = list(clustered_dupes)
 
 print('# duplicate sets', len(clustered_dupes))
 
