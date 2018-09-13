@@ -51,6 +51,7 @@ if not os.path.exists(contributions_txt_file) :
 
 conn = MySQLdb.connect(read_default_file = os.path.abspath('.') + '/mysql.cnf', 
                        local_infile = 1,
+                       sql_mode="ALLOW_INVALID_DATES",
                        db='contributions')
 c = conn.cursor()
 

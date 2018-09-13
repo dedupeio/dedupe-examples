@@ -81,8 +81,8 @@ con2 = MySQLdb.connect(db='contributions',
 c2 = con2.cursor()
 c2.execute("SET net_write_timeout = 3600")
 
-# Increase max GROUP_CONCAT() length. The ability to concatenate long strings
-# is needed a few times down below.
+# Increase max GROUP_CONCAT() length. The ability to concatenate long
+# strings is needed a few times down below.
 c.execute("SET group_concat_max_len = 10192")
 
 # We'll be using variations on this following select statement to pull
@@ -91,8 +91,8 @@ c.execute("SET group_concat_max_len = 10192")
 # We did a fair amount of preprocessing of the fields in
 # `mysql_init_db.py`
 
-DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address, " \
-               "occupation, employer, person from processed_donors"
+DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address " \
+               "from processed_donors"
 
 # ## Training
 
@@ -107,19 +107,12 @@ else:
     # The address, city, and zip fields are often missing, so we'll
     # tell dedupe that, and we'll learn a model that take that into
     # account
-    fields = [{'field' : 'name', 'variable name' : 'name',
-               'type': 'String'},
+    fields = [{'field' : 'name', 'type': 'String'},
               {'field' : 'address', 'type': 'String', 
-               'variable name' : 'address', 'has missing' : True},
-              {'field' : 'city', 'type': 'String', 'has missing' : True},
-              {'field' : 'state', 'type': 'String', 'has missing': True},
-              {'field' : 'zip', 'type': 'String', 'has missing' : True},
-              {'field' : 'person', 'variable name' : 'person',
-               'type' : 'Exists'},
-              {'type' : 'Interaction',
-               'interaction variables' : ['person', 'address']},
-              {'type' : 'Interaction', 
-               'interaction variables' : ['name', 'address']}
+               'has missing' : True},
+              {'field' : 'city', 'type': 'ShortString', 'has missing' : True},
+              {'field' : 'state', 'type': 'ShortString', 'has missing': True},
+              {'field' : 'zip', 'type': 'ShortString', 'has missing' : True},
               ]
 
     # Create a new deduper object and pass our data model to it.
@@ -127,9 +120,9 @@ else:
 
     # We will sample pairs from the entire donor table for training
     c.execute(DONOR_SELECT)
-    temp_d = dict((i, row) for i, row in enumerate(c))
+    temp_d = {i: row for i, row in enumerate(c)}
 
-    deduper.sample(temp_d, 10000)
+    deduper.sample(temp_d)
     del temp_d
 
     # If we have training data saved from a previous run of dedupe,
@@ -272,7 +265,7 @@ c.execute("CREATE TABLE plural_key "
           "(block_key VARCHAR(200), "
           " block_id INTEGER UNSIGNED AUTO_INCREMENT, "
           " PRIMARY KEY (block_id)) "
-          "(SELECT MIN(block_key) FROM "
+          "(SELECT MIN(block_key) AS block_key FROM "
           " (SELECT block_key, "
           "  GROUP_CONCAT(donor_id ORDER BY donor_id) AS block "
           "  FROM blocking_map "
@@ -359,7 +352,7 @@ def candidates_gen(result_set) :
 
 c.execute("SELECT donor_id, city, name, "
           "zip, state, address, "
-          "occupation, employer, person, block_id, smaller_ids "
+          "block_id, smaller_ids "
           "FROM smaller_coverage "
           "INNER JOIN processed_donors "
           "USING (donor_id) "
@@ -369,35 +362,34 @@ print('clustering...')
 clustered_dupes = deduper.matchBlocks(candidates_gen(c),
                                       threshold=0.5)
 
-# matchBlocks returns a generator. Turn it into a list
-clustered_dupes = list(clustered_dupes)
-
 ## Writing out results
 
 # We now have a sequence of tuples of donor ids that dedupe believes
 # all refer to the same entity. We write this out onto an entity map
 # table
-c.execute("DROP TABLE IF EXISTS entity_map")
+c2.execute("DROP TABLE IF EXISTS entity_map")
 
 print('creating entity_map database')
-c.execute("CREATE TABLE entity_map "
+c2.execute("CREATE TABLE entity_map "
           "(donor_id INTEGER, canon_id INTEGER, "
           " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
+n_clusters = 0
 for cluster, scores in clustered_dupes :
+    n_clusters += 1
     cluster_id = cluster[0]
     for donor_id, score in zip(cluster, scores) :
-        c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
-                  (donor_id, cluster_id, score))
+        c2.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
+                   (donor_id, cluster_id, score))
 
-con.commit()
+con2.commit()
 
 c.execute("CREATE INDEX head_index ON entity_map (canon_id)")
 con.commit()
 
 # Print out the number of duplicates found
 print('# duplicate sets')
-print(len(clustered_dupes))
+print(n_clusters)
 
 # ## Payoff
 
