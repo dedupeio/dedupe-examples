@@ -80,8 +80,8 @@ c = con.cursor()
 # We did a fair amount of preprocessing of the fields in
 # `pgsql_big_dedupe_example_init_db.py`
 
-DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address, " \
-               "occupation, employer, person from processed_donors"
+DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address " \
+               "from processed_donors"
 
 # ## Training
 
@@ -96,19 +96,12 @@ else:
     # The address, city, and zip fields are often missing, so we'll
     # tell dedupe that, and we'll learn a model that take that into
     # account
-    fields = [{'field': 'name', 'variable name': 'name',
-               'type': 'String'},
-              {'field': 'address', 'type': 'String',
-               'variable name': 'address', 'has missing': True},
-              {'field': 'city', 'type': 'String', 'has missing': True},
-              {'field': 'state', 'type': 'String'},
-              {'field': 'zip', 'type': 'String', 'has missing': True},
-              {'field': 'person', 'variable name': 'person',
-               'type': 'Categorical', 'categories': [0, 1]},
-              {'type': 'Interaction',
-               'interaction variables': ['person', 'address']},
-              {'type': 'Interaction',
-               'interaction variables': ['name', 'address']}
+    fields = [{'field' : 'name', 'type': 'String'},
+              {'field' : 'address', 'type': 'String',
+               'has missing' : True},
+              {'field' : 'city', 'type': 'ShortString', 'has missing' : True},
+              {'field' : 'state', 'type': 'ShortString', 'has missing': True},
+              {'field' : 'zip', 'type': 'ShortString', 'has missing' : True},
               ]
 
     # Create a new deduper object and pass our data model to it.
@@ -118,9 +111,9 @@ else:
     cur = con.cursor('donor_select')
 
     cur.execute(DONOR_SELECT)
-    temp_d = dict((i, row) for i, row in enumerate(cur))
+    temp_d = {i: row for i, row in enumerate(cur)}
 
-    deduper.sample(temp_d, 75000)
+    deduper.sample(temp_d)
     del temp_d
 
     # If we have training data saved from a previous run of dedupe,
@@ -276,7 +269,7 @@ con.commit()
 logging.info("creating smaller_coverage")
 c.execute("CREATE TABLE smaller_coverage "
           "AS (SELECT donor_id, block_id, "
-          " sorted_ids[:(idx(sorted_ids, block_id) - 1)]"
+          " sorted_ids[0:(idx(sorted_ids, block_id) - 1)]"
           "      AS smaller_ids "
           " FROM plural_block INNER JOIN covered_blocks "
           " USING (donor_id))")
@@ -320,7 +313,7 @@ def candidates_gen(result_set):
 c4 = con.cursor('c4')
 c4.execute("SELECT donor_id, city, name, "
            "zip, state, address, "
-           "occupation, employer, person, block_id, smaller_ids "
+           "block_id, smaller_ids "
            "FROM smaller_coverage "
            "INNER JOIN processed_donors "
            "USING (donor_id) "
@@ -329,9 +322,6 @@ c4.execute("SELECT donor_id, city, name, "
 print('clustering...')
 clustered_dupes = deduper.matchBlocks(candidates_gen(c4),
                                       threshold=0.5)
-
-# matchBlocks returns a generator. Turn it into a list
-clustered_dupes = list(clustered_dupes)
 
 ## Writing out results
 
@@ -349,8 +339,9 @@ csv_file = tempfile.NamedTemporaryFile(prefix='entity_map_', delete=False,
                                        mode='w')
 csv_writer = csv.writer(csv_file)
 
-
+n_clusters = 0
 for cluster, scores in clustered_dupes:
+    n_clusters += 1
     cluster_id = cluster[0]
     for donor_id, score in zip(cluster, scores) :
         csv_writer.writerow([donor_id, cluster_id, score])
@@ -371,7 +362,7 @@ con.commit()
 
 # Print out the number of duplicates found
 print('# duplicate sets')
-print(len(clustered_dupes))
+print(n_clusters)
 
 
 # ## Payoff
