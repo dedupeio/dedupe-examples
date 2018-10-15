@@ -15,6 +15,7 @@ import re
 import logging
 import optparse
 import random
+import collections
 
 import dedupe
 from unidecode import unidecode
@@ -162,49 +163,58 @@ threshold = gazetteer.threshold(messy, recall_weight=1.0)
 print('Threshold: {}'.format(threshold))
 
 
-results = gazetteer.match(messy, threshold=threshold, n_matches=1, generator=True)
+results = gazetteer.match(messy, threshold=threshold, n_matches=2, generator=True)
 
-cluster_membership = {}
-cluster_id = None
-for cluster_id, (row,) in enumerate(results):
-    cluster, score = row
-    for record_id in cluster:
-        cluster_membership[record_id] = (cluster_id, score)
+messy_matches = collections.defaultdict(dict)
+for matches in results:
+    for (messy_id, canon_id), score in matches:
+        messy_matches[messy_id][canon_id] = score
 
-if cluster_id :
-    unique_id = cluster_id + 1
-else :
-    unique_id =0
-    
+link_ids = {}
+link_id = 0
+for canon_ids in messy_matches.values():
+    for canon_id in canon_ids:
+        if canon_id not in link_ids:
+            link_ids[canon_id] = link_id
+            link_id += 1
 
 with open(output_file, 'w') as f:
     writer = csv.writer(f)
-    
-    header_unwritten = True
 
-    for fileno, filename in enumerate(('AbtBuy_Abt.csv', 'AbtBuy_Buy.csv')) :
-        with open(filename) as f_input :
-            reader = csv.reader(f_input)
+    canon_file = 'AbtBuy_Buy.csv'
+    messy_file = 'AbtBuy_Abt.csv'
 
-            if header_unwritten :
-                heading_row = next(reader)
-                heading_row.insert(0, 'source file')
-                heading_row.insert(0, 'Link Score')
-                heading_row.insert(0, 'Cluster ID')
-                writer.writerow(heading_row)
-                header_unwritten = False
-            else :
-                next(reader)
+    with open(canon_file) as f_input :
+        reader = csv.reader(f_input)
 
-            for row_id, row in enumerate(reader):
-                cluster_details = cluster_membership.get(filename + str(row_id))
-                if cluster_details is None :
-                    cluster_id = unique_id
-                    unique_id += 1
-                    score = None
-                else :
-                    cluster_id, score = cluster_details
-                row.insert(0, filename)
-                row.insert(0, score)
-                row.insert(0, cluster_id)
-                writer.writerow(row)
+        heading_row = next(reader)
+        additional_columns = ['source file', 'Link Score',
+                              'Link ID', 'record id']
+        heading_row = additional_columns + heading_row
+        writer.writerow(heading_row)
+
+        for row_id, row in enumerate(reader):
+            record_id = canon_file + str(row_id)
+            link_id = link_ids.get(record_id)
+            row = [canon_file, None, link_id, record_id] + row
+
+            writer.writerow(row)
+
+        last_row_id = row_id
+
+    with open(messy_file) as f_input:
+        reader = csv.reader(f_input)
+        next(reader)
+
+        for row_id, row in enumerate(reader):
+            record_id = messy_file + str(row_id)
+            matches = messy_matches.get(record_id)
+
+            if not matches:
+                no_match_row = [messy_file, None, None, record_id] + row
+                writer.writerow(no_match_row)
+            else:
+                for canon_id, score in matches.items():
+                    link_id = link_ids[canon_id]
+                    link_row = [messy_file, score, link_id, record_id] + row
+                    writer.writerow(link_row)
