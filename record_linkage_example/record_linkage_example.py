@@ -116,8 +116,6 @@ else:
 
     # Create a new linker object and pass our data model to it.
     linker = dedupe.RecordLink(fields)
-    d_1 = dict(list(data_1.items())[:100])
-    d_2 = dict(list(data_2.items())[:100])
 
     # If we have training data saved from a previous run of linker,
     # look for it an load it in.
@@ -125,12 +123,12 @@ else:
     if os.path.exists(training_file):
         print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
-            linker.prepare_training(d_1,
-                                    d_2,
+            linker.prepare_training(data_1,
+                                    data_2,
                                     training_file=tf,
                                     sample_size=15000)
     else:
-        linker.prepare_training(d_1, d_2, sample_size=15000)
+        linker.prepare_training(data_1, data_2, sample_size=15000)
 
     # ## Active learning
     # Dedupe will find the next pair of records
