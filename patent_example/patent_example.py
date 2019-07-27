@@ -18,7 +18,6 @@ import optparse
 import math
 
 import dedupe
-from unidecode import unidecode
 
 # ## Logging
 
@@ -131,14 +130,14 @@ else:
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields, num_cores=2)
 
-    # To train dedupe, we feed it a sample of records.
-    deduper.sample(data_d, 10000)
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
     if os.path.exists(training_file):
         print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
-            deduper.readTraining(tf)
+            deduper.prepare_training(data_d, training_file=tf)
+    else:
+        deduper.prepare_training(data_d)
 
     # ## Active learning
 
@@ -163,7 +162,7 @@ else:
     with open(settings_file, 'wb') as sf :
         deduper.writeSettings(sf)
 
-clustered_dupes = deduper.match(data_d, 0.2)
+clustered_dupes = deduper.match(data_d, 0.5)
 
 print('# duplicate sets', len(clustered_dupes))
 

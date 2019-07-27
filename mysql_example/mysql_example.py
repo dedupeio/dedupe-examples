@@ -122,9 +122,6 @@ else:
     c.execute(DONOR_SELECT)
     temp_d = {i: row for i, row in enumerate(c)}
 
-    deduper.sample(temp_d)
-    del temp_d
-
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
     #
@@ -133,7 +130,11 @@ else:
     if os.path.exists(training_file):
         print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
-            deduper.readTraining(tf)
+            deduper.prepare_training(temp_d, training_file=tf)
+    else:
+        deduper.prepare_training(temp_d)
+
+    del temp_d
 
     # ## Active learning
 
