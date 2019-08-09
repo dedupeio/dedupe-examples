@@ -59,7 +59,7 @@ def preProcess(column):
         column = None
     return column
 
-print 'importing data ...'
+print('importing data ...')
 c.execute(MAILING_SELECT)
 data= c.fetchall()
 data_d = {}
@@ -69,7 +69,7 @@ for row in data:
     data_d[row_id] = dict(clean_row)
 
 if os.path.exists(settings_file):
-    print 'reading from', settings_file
+    print('reading from', settings_file)
     with open(settings_file) as sf :
         deduper = dedupe.StaticDedupe(sf)
 
@@ -83,14 +83,14 @@ else:
 
     deduper = dedupe.Dedupe(fields)
 
-    deduper.sample(data_d, 150000)
-
     if os.path.exists(training_file):
-        print 'reading labeled examples from ', training_file
+        print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
-            deduper.readTraining(tf)
+            deduper.prepare_training(data_d, training_file=tf)
+    else:
+        dedupe.prepare_training(data_d)
 
-    print 'starting active labeling...'
+    print('starting active labeling...')
 
     dedupe.consoleLabel(deduper)
 
@@ -102,14 +102,14 @@ else:
     with open(settings_file, 'w') as sf :
         deduper.writeSettings(sf)
 
-print 'blocking...'
+print('blocking...')
 
 threshold = deduper.threshold(data_d, recall_weight=2)
 
-print 'clustering...'
+print('clustering...')
 clustered_dupes = deduper.match(data_d, threshold)
 
-print '# duplicate sets', len(clustered_dupes)
+print('# duplicate sets', len(clustered_dupes))
 
 c2 = con2.cursor()
 c2.execute('SELECT * FROM csv_messy_data')
@@ -147,4 +147,4 @@ con2.commit()
 con2.close()
 con.close()
 
-print 'ran in', time.time() - start_time, 'seconds'
+print('ran in', time.time() - start_time, 'seconds')

@@ -116,8 +116,6 @@ else:
 
     # Create a new linker object and pass our data model to it.
     linker = dedupe.RecordLink(fields)
-    # To train the linker, we feed it a sample of records.
-    linker.sample(data_1, data_2, 15000)
 
     # If we have training data saved from a previous run of linker,
     # look for it an load it in.
@@ -125,7 +123,12 @@ else:
     if os.path.exists(training_file):
         print('reading labeled examples from ', training_file)
         with open(training_file) as tf :
-            linker.readTraining(tf)
+            linker.prepare_training(data_1,
+                                    data_2,
+                                    training_file=tf,
+                                    sample_size=15000)
+    else:
+        linker.prepare_training(data_1, data_2, sample_size=15000)
 
     # ## Active learning
     # Dedupe will find the next pair of records
@@ -162,7 +165,7 @@ else:
 # this function but a representative sample.
 
 print('clustering...')
-linked_records = linker.match(data_1, data_2, 0)
+linked_records = linker.match(data_1, data_2, 0.0)
 
 print('# duplicate sets', len(linked_records))
 

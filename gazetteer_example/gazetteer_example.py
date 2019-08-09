@@ -117,9 +117,6 @@ else:
 
     # Create a new gazetteer object and pass our data model to it.
     gazetteer = dedupe.Gazetteer(fields)
-    # To train the gazetteer, we feed it a sample of records.
-    # Gazetteer inherits sample from RecordLink
-    gazetteer.sample(messy, canonical, 15000)
 
     # If we have training data saved from a previous run of gazetteer,
     # look for it an load it in.
@@ -127,7 +124,9 @@ else:
     if os.path.exists(training_file):
         print('reading labeled examples from ', training_file)
         with open(training_file) as tf:
-            gazetteer.readTraining(tf)
+            gazetteer.prepare_training(messy, canonical, training_file=tf)
+    else:
+        gazetteer.prepare_training(messy, canonical)
 
     # ## Active learning
     # Dedupe will find the next pair of records

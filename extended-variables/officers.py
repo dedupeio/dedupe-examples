@@ -114,17 +114,15 @@ else:
     # Create a new deduper object and pass our data model to it.
     deduper = dedupe.Dedupe(fields)
 
-    # To train dedupe, we feed it a sample of records.
-    deduper.sample(data_d)
-
-
     # If we have training data saved from a previous run of dedupe,
     # look for it an load it in.
     # __Note:__ if you want to train from scratch, delete the training_file
     if os.path.exists(training_file):
         print('reading labeled examples from ', training_file)
         with open(training_file, 'rb') as f:
-            deduper.readTraining(f)
+            deduper.prepare_training(data_d, training_file=f)
+    else:
+        deduper.prepare_training(data_d)
 
     # ## Active learning
     # Dedupe will find the next pair of records
