@@ -155,174 +155,126 @@ else:
     # for training
     deduper.cleanupTraining()
 
-## Blocking
-print('blocking...')
+# ## Blocking
+# print('blocking...')
 
-# To run blocking on such a large set of data, we create a separate table
-# that contains blocking keys and record ids
-print('creating blocking_map database')
-c.execute("DROP TABLE IF EXISTS blocking_map")
-c.execute("CREATE TABLE blocking_map "
-          "(block_key VARCHAR(200), donor_id INTEGER)")
+# # To run blocking on such a large set of data, we create a separate table
+# # that contains blocking keys and record ids
+# print('creating blocking_map database')
+# c.execute("DROP TABLE IF EXISTS blocking_map")
+# c.execute("CREATE TABLE blocking_map "
+#           "(block_key VARCHAR(200), donor_id INTEGER)")
 
 
-# If dedupe learned a Index Predicate, we have to take a pass
-# through the data and create indices.
-print('creating inverted index')
+# # If dedupe learned a Index Predicate, we have to take a pass
+# # through the data and create indices.
+# print('creating inverted index')
 
-for field in deduper.blocker.index_fields:
-    c2 = con.cursor('c2')
-    c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
-    field_data = (row[field] for row in c2)
-    deduper.blocker.index(field_data, field)
-    c2.close()
+# for field in deduper.blocker.index_fields:
+#     c2 = con.cursor('c2')
+#     c2.execute("SELECT DISTINCT %s FROM processed_donors" % field)
+#     field_data = (row[field] for row in c2)
+#     deduper.blocker.index(field_data, field)
+#     c2.close()
 
-# Now we are ready to write our blocking map table by creating a
-# generator that yields unique `(block_key, donor_id)` tuples.
-print('writing blocking map')
+# # Now we are ready to write our blocking map table by creating a
+# # generator that yields unique `(block_key, donor_id)` tuples.
+# print('writing blocking map')
 
-c3 = con.cursor('donor_select2')
-c3.execute(DONOR_SELECT)
-full_data = ((row['donor_id'], row) for row in c3)
-b_data = deduper.blocker(full_data)
+# c3 = con.cursor('donor_select2')
+# c3.execute(DONOR_SELECT)
+# full_data = ((row['donor_id'], row) for row in c3)
+# b_data = deduper.blocker(full_data)
 
-# Write out blocking map to CSV so we can quickly load in with
-# Postgres COPY
-csv_file = tempfile.NamedTemporaryFile(prefix='blocks_', delete=False, mode='w')
-csv_writer = csv.writer(csv_file)
-csv_writer.writerows(b_data)
-c3.close()
-csv_file.close()
+# # Write out blocking map to CSV so we can quickly load in with
+# # Postgres COPY
+# csv_file = tempfile.NamedTemporaryFile(prefix='blocks_', delete=False, mode='w')
+# csv_writer = csv.writer(csv_file)
+# csv_writer.writerows(b_data)
+# c3.close()
+# csv_file.close()
 
-f = open(csv_file.name, 'r')
-c.copy_expert("COPY blocking_map FROM STDIN CSV", f)
-f.close()
+# f = open(csv_file.name, 'r')
+# c.copy_expert("COPY blocking_map FROM STDIN CSV", f)
+# f.close()
 
-os.remove(csv_file.name)
+# os.remove(csv_file.name)
 
-con.commit()
+# con.commit()
 
-# free up memory by removing indices
-deduper.blocker.resetIndices()
+# # free up memory by removing indices
+# deduper.blocker.resetIndices()
 
 # Remove blocks that contain only one record, sort by block key and
 # donor, key and index blocking map.
 #
 # These steps, particularly the sorting will let us quickly create
 # blocks of data for comparison
-print('prepare blocking table. this will probably take a while ...')
+#print('prepare blocking table. this will probably take a while ...')
 
-logging.info("indexing block_key")
-c.execute("CREATE INDEX blocking_map_key_idx ON blocking_map (block_key)")
-
-c.execute("DROP TABLE IF EXISTS plural_key")
-c.execute("DROP TABLE IF EXISTS plural_block")
-c.execute("DROP TABLE IF EXISTS covered_blocks")
-c.execute("DROP TABLE IF EXISTS smaller_coverage")
-
-# Many block_keys will only form blocks that contain a single
-# record. Since there are no comparisons possible withing such a
-# singleton block we can ignore them.
-logging.info("calculating plural_key")
-c.execute("CREATE TABLE plural_key "
-          "(block_key VARCHAR(200), "
-          " block_id SERIAL PRIMARY KEY)")
-
-c.execute("INSERT INTO plural_key (block_key) "
-          "SELECT block_key FROM blocking_map "
-          "GROUP BY block_key HAVING COUNT(*) > 1")
-
-logging.info("creating block_key index")
-c.execute("CREATE UNIQUE INDEX block_key_idx ON plural_key (block_key)")
-
-logging.info("calculating plural_block")
-c.execute("CREATE TABLE plural_block "
-          "AS (SELECT block_id, donor_id "
-          " FROM blocking_map INNER JOIN plural_key "
-          " USING (block_key))")
-
-logging.info("adding donor_id index and sorting index")
-c.execute("CREATE INDEX plural_block_donor_id_idx ON plural_block (donor_id)")
-c.execute("CREATE UNIQUE INDEX plural_block_block_id_donor_id_uniq "
-          " ON plural_block (block_id, donor_id)")
-
-
-# To use Kolb, et.al's Redundant Free Comparison scheme, we need to
-# keep track of all the block_ids that are associated with a
-# particular donor records. 
-
-logging.info("creating covered_blocks")
-c.execute("CREATE TABLE covered_blocks "
-          "AS (SELECT donor_id, "
-          " array_agg(block_id ORDER BY block_id) "
-          "   AS sorted_ids "
-          " FROM plural_block "
-          " GROUP BY donor_id)")
-
-c.execute("CREATE UNIQUE INDEX covered_blocks_donor_id_idx "
-          "ON covered_blocks (donor_id)")
-
-con.commit()
-
-# In particular, for every block of records, we need to keep
-# track of a donor records's associated block_ids that are SMALLER than
-# the current block's id. 
-logging.info("creating smaller_coverage")
-c.execute("CREATE TABLE smaller_coverage "
-          "AS (SELECT donor_id, block_id, "
-          " sorted_ids[0:(idx(sorted_ids, block_id) - 1)]"
-          "      AS smaller_ids "
-          " FROM plural_block INNER JOIN covered_blocks "
-          " USING (donor_id))")
-
-con.commit()
-
+#logging.info("indexing block_key")
+#c.execute("CREATE INDEX ON blocking_map (block_key, donor_id)")
 
 ## Clustering
 
-def candidates_gen(result_set):
-    lset = set
+def record_pairs(result_set):
+    # can we do some of this with pgsql arrays
+    field_names = ('city', 'name', 'zip', 'state', 'address')
+    for i, row in enumerate(result_set):
+        a_record_id = row[0]
+        a_values = row[1:6]
+        b_record_id = row[6]
+        b_values = row[7:12]
+        record_a = (a_record_id, dict(zip(field_names, a_values)))
+        record_b = (b_record_id, dict(zip(field_names, b_values)))
+               
+        yield record_a, record_b
+        
+        if i % 1000 == 0:
+            print(i)
 
-    block_id = None
-    records = []
-    i = 0
-    for row in result_set:
-        if row['block_id'] != block_id:
-            if records:
-                yield records
-
-            block_id = row['block_id']
-            records = []
-            i += 1
-
-            if i % 10000 == 0:
-                print(i, "blocks")
-                print(time.time() - start_time, "seconds")
-
-        smaller_ids = row['smaller_ids']
-
-        if smaller_ids:
-            smaller_ids = lset(smaller_ids)
-        else:
-            smaller_ids = lset([])
-
-        records.append((row['donor_id'], row, smaller_ids))
-
-    if records:
-        yield records
-
-c4 = con.cursor('c4')
-c4.execute("SELECT donor_id, city, name, "
-           "zip, state, address, "
-           "block_id, smaller_ids "
-           "FROM smaller_coverage "
-           "INNER JOIN processed_donors "
-           "USING (donor_id) "
-           "ORDER BY (block_id)")
+c4 = con.cursor('c4', cursor_factory=psycopg2.extensions.cursor)
+c4.execute("""
+           select DISTINCT
+                  a.donor_id, 
+                  a.city, 
+                  a.name, 
+                  a.zip, 
+                  a.state, 
+                  a.address, 
+                  b.donor_id, 
+                  b.city, 
+                  b.name, 
+                  b.zip, 
+                  b.state, 
+                  b.address 
+           from (
+               select block_key,
+                      donor_id,
+                      city,
+                      name,
+                      zip,
+                      state,
+                      address
+               from blocking_map
+               inner join processed_donors 
+               using (donor_id)) as a 
+           inner join (
+               select block_key,
+                      donor_id,
+                      city,
+                      name,
+                      zip,
+                      state,
+                      address
+               from blocking_map
+               inner join processed_donors 
+               using (donor_id)) as b
+           using (block_key)
+           where a.donor_id < b.donor_id""")
 
 print('clustering...')
-clustered_dupes = deduper.matchBlocks(candidates_gen(c4),
-                                      threshold=0.5)
+clustered_dupes = deduper.cluster(deduper.score(record_pairs(c4)), threshold)
 
 ## Writing out results
 
