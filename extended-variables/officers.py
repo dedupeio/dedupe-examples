@@ -1,9 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-This code demonstrates how to use some extended dedupe variables 
+This code demonstrates how to use some extended dedupe variables
 """
-from future.builtins import next
 
 import os
 import csv
@@ -11,33 +10,9 @@ import re
 import logging
 import optparse
 
+import unidecode
+
 import dedupe
-from unidecode import unidecode
-
-# ## Logging
-
-# Dedupe uses Python logging to show or suppress verbose output. Added for convenience.
-# To enable verbose logging, run `python examples/csv_example/csv_example.py -v`
-optp = optparse.OptionParser()
-optp.add_option('-v', '--verbose', dest='verbose', action='count',
-                help='Increase verbosity (specify multiple times for more)'
-                )
-(opts, args) = optp.parse_args()
-log_level = logging.WARNING 
-if opts.verbose :
-    if opts.verbose == 1:
-        log_level = logging.INFO
-    elif opts.verbose >= 2:
-        log_level = logging.DEBUG
-logging.getLogger().setLevel(log_level)
-
-
-# ## Setup
-
-input_file = 'officers.csv'
-output_file = 'officers_output.csv'
-settings_file = 'officers_settings'
-training_file = 'officers_training.json'
 
 
 def preProcess(column):
@@ -45,8 +20,6 @@ def preProcess(column):
     Do a little bit of data cleaning with the help of Unidecode and Regex.
     Things like casing, extra spaces, quotes and new lines can be ignored.
     """
-    import unidecode
-    #column = column.decode("utf8")
     column = unidecode.unidecode(column)
     column = re.sub('  +', ' ', column)
     column = re.sub('\n', ' ', column)
@@ -56,7 +29,7 @@ def preProcess(column):
 
 def readData(filename):
     """
-    Read in our data from a CSV file and create a dictionary of records, 
+    Read in our data from a CSV file and create a dictionary of records,
     where the key is a unique record ID and each value is dict
     """
 
@@ -65,13 +38,13 @@ def readData(filename):
         reader = csv.DictReader(f)
         for row in reader:
             clean_row = {k: preProcess(v) for (k, v) in row.items()}
-            clean_row['name'] = ' '.join([clean_row['FirstName'], 
+            clean_row['name'] = ' '.join([clean_row['FirstName'],
                                           clean_row['LastName']])
-            if not clean_row['name'] :
+            if not clean_row['name']:
                 clean_row['name'] = None
-            clean_row['address'] = ' '.join([clean_row['Address1'], 
+            clean_row['address'] = ' '.join([clean_row['Address1'],
                                              clean_row['Address2']])
-            if not clean_row['address'] :
+            if not clean_row['address']:
                 clean_row['address'] = None
             row_id = int(row['ID'])
 
@@ -84,121 +57,131 @@ def readData(filename):
     return data_d
 
 
-print('importing data ...')
-data_d = readData(input_file)
+if __name__ == '__main__':
 
-# ## Training
+    # ## Logging
 
-if os.path.exists(settings_file):
-    print('reading from', settings_file)
-    with open(settings_file, 'rb') as f:
-        deduper = dedupe.StaticDedupe(f)
+    # Dedupe uses Python logging to show or suppress verbose
+    # output. Added for convenience.  To enable verbose logging, run
+    # `python examples/csv_example/csv_example.py -v`
+    optp = optparse.OptionParser()
+    optp.add_option('-v', '--verbose', dest='verbose', action='count',
+                    help='Increase verbosity (specify multiple times for more)'
+                    )
+    (opts, args) = optp.parse_args()
+    log_level = logging.WARNING
+    if opts.verbose:
+        if opts.verbose == 1:
+            log_level = logging.INFO
+        elif opts.verbose >= 2:
+            log_level = logging.DEBUG
+    logging.getLogger().setLevel(log_level)
 
-else:
-    # Define the fields dedupe will pay attention to
-    #
-    # Notice how we are telling dedupe to use a custom field comparator
-    # for the 'Zip' field. 
-    fields = [
-        {'field' : 'name', 'type': 'Name', 
-         'crf' : True},
-        {'field' : 'address', 'type': 'Address',
-         'crf' : True},
-        {'field' : 'City', 'type' : 'ShortString'},
-        {'field' : 'State', 'type' : 'ShortString'},
-        {'field' : 'Zip', 'type' : 'ShortString'},
-        {'field' : 'Phone', 'type' : 'ShortString'},
-        {'field' : 'RedactionRequested', 'type' : 'Categorical',
-         'categories' : ['true', 'false']}]
+    # ## Setup
 
-    # Create a new deduper object and pass our data model to it.
-    deduper = dedupe.Dedupe(fields)
+    input_file = 'officers.csv'
+    output_file = 'officers_output.csv'
+    settings_file = 'officers_settings'
+    training_file = 'officers_training.json'
 
-    # If we have training data saved from a previous run of dedupe,
-    # look for it an load it in.
-    # __Note:__ if you want to train from scratch, delete the training_file
-    if os.path.exists(training_file):
-        print('reading labeled examples from ', training_file)
-        with open(training_file, 'rb') as f:
-            deduper.prepare_training(data_d, training_file=f)
+    print('importing data ...')
+    data_d = readData(input_file)
+
+    # ## Training
+
+    if os.path.exists(settings_file):
+        print('reading from', settings_file)
+        with open(settings_file, 'rb') as f:
+            deduper = dedupe.StaticDedupe(f)
+
     else:
-        deduper.prepare_training(data_d)
+        # Define the fields dedupe will pay attention to
+        #
+        # Notice how we are telling dedupe to use a custom field comparator
+        # for the 'Zip' field.
+        fields = [
+            {'field': 'name', 'type': 'Name',
+             'crf': True},
+            {'field': 'address', 'type': 'Address',
+             'crf': True},
+            {'field': 'City', 'type': 'ShortString'},
+            {'field': 'State', 'type': 'ShortString'},
+            {'field': 'Zip', 'type': 'ShortString'},
+            {'field': 'Phone', 'type': 'ShortString'},
+            {'field': 'RedactionRequested', 'type': 'Categorical',
+             'categories': ['true', 'false']}]
 
-    # ## Active learning
-    # Dedupe will find the next pair of records
-    # it is least certain about and ask you to label them as duplicates
-    # or not.
-    # use 'y', 'n' and 'u' keys to flag duplicates
-    # press 'f' when you are finished
-    print('starting active labeling...')
+        # Create a new deduper object and pass our data model to it.
+        deduper = dedupe.Dedupe(fields)
 
-    dedupe.consoleLabel(deduper)
+        # If we have training data saved from a previous run of dedupe,
+        # look for it an load it in.
+        # __Note:__ if you want to train from scratch, delete the training_file
+        if os.path.exists(training_file):
+            print('reading labeled examples from ', training_file)
+            with open(training_file, 'rb') as f:
+                deduper.prepare_training(data_d, training_file=f)
+        else:
+            deduper.prepare_training(data_d)
 
-    deduper.train()
+        # ## Active learning
+        # Dedupe will find the next pair of records
+        # it is least certain about and ask you to label them as duplicates
+        # or not.
+        # use 'y', 'n' and 'u' keys to flag duplicates
+        # press 'f' when you are finished
+        print('starting active labeling...')
 
-    # When finished, save our training away to disk
-    with open(training_file, 'w') as tf :
-        deduper.writeTraining(tf)
+        dedupe.console_label(deduper)
 
-    # Save our weights and predicates to disk.  If the settings file
-    # exists, we will skip all the training and learning next time we run
-    # this file.
-    with open(settings_file, 'wb') as sf :
-        deduper.writeSettings(sf)
+        deduper.train()
 
+        # When finished, save our training away to disk
+        with open(training_file, 'w') as tf:
+            deduper.write_training(tf)
 
-# ## Blocking
+        # Save our weights and predicates to disk.  If the settings file
+        # exists, we will skip all the training and learning next time we run
+        # this file.
+        with open(settings_file, 'wb') as sf:
+            deduper.write_settings(sf)
 
-print('blocking...')
+    # ## Clustering
 
-# ## Clustering
+    # `match` will return sets of record IDs that dedupe
+    # believes are all referring to the same entity.
 
-# `match` will return sets of record IDs that dedupe
-# believes are all referring to the same entity.
+    print('clustering...')
+    clustered_dupes = deduper.partition(data_d, threshold=0.5)
 
-print('clustering...')
-clustered_dupes = deduper.match(data_d, threshold=0.5)
+    print('# duplicate sets', len(clustered_dupes))
 
-print('# duplicate sets', len(clustered_dupes))
+    # ## Writing Results
 
-# ## Writing Results
+    # Write our original data back out to a CSV with a new column called
+    # 'Cluster ID' which indicates which records refer to each other.
 
-# Write our original data back out to a CSV with a new column called 
-# 'Cluster ID' which indicates which records refer to each other.
+    cluster_membership = {}
+    for (cluster_id, cluster) in enumerate(clustered_dupes):
+        id_set, scores = cluster
+        for record_id, score in zip(id_set, scores):
+            cluster_membership[record_id] = {
+                "cluster id": cluster_id,
+                "confidence": score
+            }
 
-cluster_membership = {}
-cluster_id = 0
-for (cluster_id, cluster) in enumerate(clustered_dupes):
-    id_set, scores = cluster
-    cluster_d = [data_d[c] for c in id_set]
-    for record_id, score in zip(id_set, scores) :
-        cluster_membership[record_id] = {
-            "cluster id" : cluster_id,
-            "confidence": score
-        }
+    with open(output_file, 'w') as f_output:
+        writer = csv.writer(f_output)
 
-singleton_id = cluster_id + 1
+        with open(input_file) as f_input:
 
-with open(output_file, 'w') as f_output:
-    writer = csv.writer(f_output)
+            reader = csv.DictReader(f_input)
+            fieldnames = ['cluster id', 'confidence'] + reader.fieldnames
 
-    with open(input_file) as f_input :
-        reader = csv.reader(f_input)
+            writer = csv.DictWriter(f_output, fieldnames=fieldnames)
+            writer.writeheader()
 
-        heading_row = next(reader)
-        heading_row.insert(0, 'confidence_score')
-        heading_row.insert(0, 'Cluster ID')
-        
-        writer.writerow(heading_row)
-
-        for row in reader:
-            row_id = int(row[0])
-            if row_id in cluster_membership :
-                cluster_id = cluster_membership[row_id]["cluster id"]
-                row.insert(0, cluster_membership[row_id]['confidence'])
-                row.insert(0, cluster_id)
-            else:
-                row.insert(0, None)
-                row.insert(0, singleton_id)
-                singleton_id += 1
-            writer.writerow(row)
+            for row in reader:
+                row_id = int(row['ID'])
+                row.update(cluster_membership[row_id])
+                writer.writerow(row)
