@@ -15,16 +15,11 @@ Tables created:
 * contributions - contribution amounts tied to donor and recipients tables
 """
 
-from __future__ import print_function
-
 import os
 import zipfile
 import warnings
 
-try:
-    from urllib2 import urlopen  # Python2
-except ImportError:
-    from urllib.request import urlopen   # Python3
+from urllib.request import urlopen
 
 import MySQLdb
 
