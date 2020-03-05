@@ -10,7 +10,6 @@ This might look like
 
 ```bash
 createdb campfin
-psql -d campfin -c "CREATE EXTENSION intarray"
 export DATABASE_URL=postgres:///campfin
 ```
 
