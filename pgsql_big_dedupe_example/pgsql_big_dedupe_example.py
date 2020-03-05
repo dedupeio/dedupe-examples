@@ -333,7 +333,7 @@ if __name__ == '__main__':
             "SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) AS name, "
             "donation_totals.totals AS totals "
             "FROM donors INNER JOIN "
-d            "(SELECT canon_id, SUM(CAST(amount AS FLOAT)) AS totals "
+            "(SELECT canon_id, SUM(CAST(amount AS FLOAT)) AS totals "
             " FROM contributions INNER JOIN e_map "
             " USING (donor_id) "
             " GROUP BY (canon_id) "
