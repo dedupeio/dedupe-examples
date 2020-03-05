@@ -45,6 +45,14 @@ def record_pairs(result_set):
             print(i)
 
 
+def cluster_ids(clustered_dupes):
+
+    for cluster, scores in clustered_dupes:
+        cluster_id = cluster[0]
+        for donor_id, score in zip(cluster, scores):
+            yield donor_id, cluster_id, score
+
+
 if __name__ == '__main__':
 
     # ## Logging
@@ -80,23 +88,14 @@ if __name__ == '__main__':
     # We use Server Side cursors (SSDictCursor and SSCursor) to [avoid
     # having to have enormous result sets in
     # memory](http://stackoverflow.com/questions/1808150/how-to-efficiently-use-mysqldb-sscursor).
-    con = MySQLdb.connect(db='contributions',
-                          charset='utf8',
-                          read_default_file=MYSQL_CNF,
-                          cursorclass=MySQLdb.cursors.SSDictCursor)
-    c = con.cursor()
-    c.execute("SET net_write_timeout = 3600")
+    read_con = MySQLdb.connect(db='contributions',
+                               charset='utf8',
+                               read_default_file=MYSQL_CNF,
+                               cursorclass=MySQLdb.cursors.SSDictCursor)
 
-    con2 = MySQLdb.connect(db='contributions',
-                           charset='utf8',
-                           read_default_file=MYSQL_CNF,
-                           cursorclass=MySQLdb.cursors.SSCursor)
-    c2 = con2.cursor()
-    c2.execute("SET net_write_timeout = 3600")
-
-    # Increase max GROUP_CONCAT() length. The ability to concatenate long
-    # strings is needed a few times down below.
-    c.execute("SET group_concat_max_len = 10192")
+    write_con = MySQLdb.connect(db='contributions',
+                                charset='utf8',
+                                read_default_file=MYSQL_CNF)
 
     # We'll be using variations on this following select statement to pull
     # in campaign donor info.
@@ -131,8 +130,9 @@ if __name__ == '__main__':
         deduper = dedupe.Dedupe(fields, num_cores=4)
 
         # We will sample pairs from the entire donor table for training
-        c.execute(DONOR_SELECT)
-        temp_d = {i: row for i, row in enumerate(c)}
+        with read_con.cursor() as cur:
+            cur.execute(DONOR_SELECT)
+            temp_d = {i: row for i, row in enumerate(cur)}
 
         # If we have training data saved from a previous run of dedupe,
         # look for it an load it in.
@@ -183,108 +183,110 @@ if __name__ == '__main__':
     # To run blocking on such a large set of data, we create a separate table
     # that contains blocking keys and record ids
     print('creating blocking_map database')
-    c.execute("DROP TABLE IF EXISTS blocking_map")
-    c.execute("CREATE TABLE blocking_map "
-              "(block_key VARCHAR(200), donor_id INTEGER) "
-              "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
+    with write_con.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS blocking_map")
+        cur.execute("CREATE TABLE blocking_map "
+                    "(block_key VARCHAR(200), donor_id INTEGER) "
+                    "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
+
+    write_con.commit()
 
     # If dedupe learned a Index Predicate, we have to take a pass
     # through the data and create indices.
     print('creating inverted index')
 
     for field in deduper.fingerprinter.index_fields:
-        c2.execute("SELECT DISTINCT {field} FROM processed_donors "
-                   "WHERE {field} IS NOT NULL".format(field=field))
-        field_data = (row[0] for row in c2)
-        deduper.fingerprinter.index(field_data, field)
+        with read_con.cursor() as cur:
+            cur.execute("SELECT DISTINCT {field} FROM processed_donors "
+                        "WHERE {field} IS NOT NULL".format(field=field))
+            field_data = (row[0] for row in cur)
+            deduper.fingerprinter.index(field_data, field)
 
     # Now we are ready to write our blocking map table by creating a
     # generator that yields unique `(block_key, donor_id)` tuples.
     print('writing blocking map')
 
-    c.execute(DONOR_SELECT)
-    full_data = ((row['donor_id'], row) for row in c)
-    b_data = deduper.fingerprinter(full_data)
+    with read_con.cursor() as read_cur:
+        read_cur.execute(DONOR_SELECT)
+        full_data = ((row['donor_id'], row) for row in read_cur)
+        b_data = deduper.fingerprinter(full_data)
 
-    # MySQL has a hard limit on the size of a data object that can be
-    # passed to it.  To get around this, we chunk the blocked data in
-    # to groups of 30,000 blocks
-    step_size = 30000
+        with write_con.cursor() as write_cur:
 
-    while True:
-        chunk = tuple(itertools.islice(b_data, step_size))
+            write_cur.executemany("INSERT INTO blocking_map VALUES (%s, %s)",
+                                  b_data)
 
-        c2.executemany("INSERT INTO blocking_map VALUES (%s, %s)", chunk)
-
-        if len(chunk) < step_size:
-            break
-
-    con2.commit()
+    write_con.commit()
 
     # Free up memory by removing indices we don't need anymore
     deduper.fingerprinter.reset_indices()
 
     # indexing blocking_map
-    c.execute("CREATE UNIQUE INDEX bm_idx ON blocking_map (block_key, donor_id)")
-    con.commit()
+    print('creating index')
+    with write_con.cursor() as cur:
+        cur.execute("CREATE UNIQUE INDEX bm_idx ON blocking_map (block_key, donor_id)")
+
+    write_con.commit()
+    read_con.commit()
 
     # select unique pairs to compare
-    c2.execute("""
-           select a.donor_id,
-                  json_object('city', a.city,
-                              'name', a.name,
-                              'zip', a.zip,
-                              'state', a.state,
-                              'address', a.address),
-                  b.donor_id,
-                  json_object('city', b.city,
-                              'name', b.name,
-                              'zip', b.zip,
-                              'state', b.state,
-                              'address', b.address)
-           from (select DISTINCT l.donor_id as east, r.donor_id as west
-                 from blocking_map as l
-                 INNER JOIN blocking_map as r
-                 using (block_key)
-                 where l.donor_id < r.donor_id) ids
-           INNER JOIN processed_donors a on ids.east=a.donor_id
-           INNER JOIN processed_donors b on ids.west=b.donor_id
-           """)
+    with read_con.cursor(MySQLdb.cursors.SSCursor) as read_cur:
 
-    # ## Clustering
+        read_cur.execute("""
+               select a.donor_id,
+                      json_object('city', a.city,
+                                  'name', a.name,
+                                  'zip', a.zip,
+                                  'state', a.state,
+                                  'address', a.address),
+                      b.donor_id,
+                      json_object('city', b.city,
+                                  'name', b.name,
+                                  'zip', b.zip,
+                                  'state', b.state,
+                                  'address', b.address)
+               from (select DISTINCT l.donor_id as east, r.donor_id as west
+                     from blocking_map as l
+                     INNER JOIN blocking_map as r
+                     using (block_key)
+                     where l.donor_id < r.donor_id) ids
+               INNER JOIN processed_donors a on ids.east=a.donor_id
+               INNER JOIN processed_donors b on ids.west=b.donor_id
+               """)
 
-    print('clustering...')
-    clustered_dupes = deduper.cluster(deduper.score(record_pairs(c2)),
-                                      threshold=0.5)
+        # ## Clustering
 
-    # ## Writing out results
+        print('clustering...')
+        clustered_dupes = deduper.cluster(deduper.score(record_pairs(read_cur)),
+                                          threshold=0.5)
 
-    # We now have a sequence of tuples of donor ids that dedupe believes
-    # all refer to the same entity. We write this out onto an entity map
-    # table
-    c.execute("DROP TABLE IF EXISTS entity_map")
+        with write_con.cursor() as write_cur:
 
-    print('creating entity_map database')
-    c.execute("CREATE TABLE entity_map "
-              "(donor_id INTEGER, canon_id INTEGER, "
-              " cluster_score FLOAT, PRIMARY KEY(donor_id))")
+            # ## Writing out results
 
-    n_clusters = 0
-    for cluster, scores in clustered_dupes:
-        n_clusters += 1
-        cluster_id = cluster[0]
-        for donor_id, score in zip(cluster, scores):
-            c.execute('INSERT INTO entity_map VALUES (%s, %s, %s)',
-                      (donor_id, cluster_id, score))
+            # We now have a sequence of tuples of donor ids that dedupe believes
+            # all refer to the same entity. We write this out onto an entity map
+            # table
+            write_cur.execute("DROP TABLE IF EXISTS entity_map")
 
-    con.commit()
+            print('creating entity_map database')
+            write_cur.execute("CREATE TABLE entity_map "
+                              "(donor_id INTEGER, canon_id INTEGER, "
+                              " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
-    c.execute("CREATE INDEX head_index ON entity_map (canon_id)")
-    con.commit()
+            write_cur.executemany('INSERT INTO entity_map VALUES (%s, %s, %s)',
+                                  cluster_ids(clustered_dupes))
+
+    write_con.commit()
+
+    with write_con.cursor() as cur:
+        cur.execute("CREATE INDEX head_index ON entity_map (canon_id)")
+
+    write_con.commit()
+    read_con.commit()
 
     # Print out the number of duplicates found
     print('# duplicate sets')
-    print(n_clusters)
 
     # ## Payoff
 
@@ -295,49 +297,48 @@ if __name__ == '__main__':
 
     locale.setlocale(locale.LC_ALL, '')  # for pretty printing numbers
 
-    # Create a temporary table so each group and unmatched record has
-    # a unique id
-    c.execute("CREATE TEMPORARY TABLE e_map "
-              "SELECT IFNULL(canon_id, donor_id) AS canon_id, donor_id "
-              "FROM entity_map "
-              "RIGHT JOIN donors USING(donor_id)")
+    with read_con.cursor() as cur:
+        # Create a temporary table so each group and unmatched record has
+        # a unique id
+        cur.execute("CREATE TEMPORARY TABLE e_map "
+                    "SELECT IFNULL(canon_id, donor_id) AS canon_id, donor_id "
+                    "FROM entity_map "
+                    "RIGHT JOIN donors USING(donor_id)")
 
-    c.execute("SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) AS name, "
-              "donation_totals.totals AS totals "
-              "FROM donors INNER JOIN "
-              "(SELECT canon_id, SUM(amount) AS totals "
-              " FROM contributions INNER JOIN e_map "
-              " USING (donor_id) "
-              " GROUP BY (canon_id) "
-              " ORDER BY totals "
-              " DESC LIMIT 10) "
-              "AS donation_totals "
-              "WHERE donors.donor_id = donation_totals.canon_id")
+        cur.execute("SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) AS name, "
+                    "donation_totals.totals AS totals "
+                    "FROM donors INNER JOIN "
+                    "(SELECT canon_id, SUM(amount) AS totals "
+                    " FROM contributions INNER JOIN e_map "
+                    " USING (donor_id) "
+                    " GROUP BY (canon_id) "
+                    " ORDER BY totals "
+                    " DESC LIMIT 10) "
+                    "AS donation_totals "
+                    "WHERE donors.donor_id = donation_totals.canon_id")
 
-    print("Top Donors (deduped)")
-    for row in c.fetchall():
-        row['totals'] = locale.currency(row['totals'], grouping=True)
-        print('%(totals)20s: %(name)s' % row)
+        print("Top Donors (deduped)")
+        for row in cur:
+            row['totals'] = locale.currency(row['totals'], grouping=True)
+            print('%(totals)20s: %(name)s' % row)
 
-    # Compare this to what we would have gotten if we hadn't done any
-    # deduplication
-    c.execute("SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) as name, "
-              "SUM(contributions.amount) AS totals "
-              "FROM donors INNER JOIN contributions "
-              "USING (donor_id) "
-              "GROUP BY (donor_id) "
-              "ORDER BY totals DESC "
-              "LIMIT 10")
+        # Compare this to what we would have gotten if we hadn't done any
+        # deduplication
+        cur.execute("SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) as name, "
+                    "SUM(contributions.amount) AS totals "
+                    "FROM donors INNER JOIN contributions "
+                    "USING (donor_id) "
+                    "GROUP BY (donor_id) "
+                    "ORDER BY totals DESC "
+                    "LIMIT 10")
 
-    print("Top Donors (raw)")
-    for row in c.fetchall():
-        row['totals'] = locale.currency(row['totals'], grouping=True)
-        print('%(totals)20s: %(name)s' % row)
+        print("Top Donors (raw)")
+        for row in cur:
+            row['totals'] = locale.currency(row['totals'], grouping=True)
+            print('%(totals)20s: %(name)s' % row)
 
-    # Close our database connection
-    c.close()
-    con.close()
-    c2.close()
-    con2.close()
+        # Close our database connection
+    read_con.close()
+    write_con.close()
 
     print('ran in', time.time() - start_time, 'seconds')
