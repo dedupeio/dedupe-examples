@@ -1,5 +1,8 @@
 language: python
 cache: pip
+branches:
+  only:
+    - master
 install:
   - pip install pycco
 before script:
@@ -9,11 +12,10 @@ script:
   - pycco mysql_example/mysql_example.py
   - pycco mysql_example/mysql_init_db.py
   - pycco patent_example/patent_example.py
-  - pycco pgsql_example/pgsql_example.py
   - pycco record_linkage_example/record_linkage_example.py
   - pycco gazetteer_example/gazetteer_example.py
   - pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
-after_success:
+deploy:
   - git config user.name "Travis CI"
   - git config user.email "fgregg@uchicago.edu"
   - git add docs/*
