@@ -23,26 +23,28 @@ def linkPairs(filename, rowname) :
 
     with open(filename) as f:
         reader = csv.DictReader(f, delimiter=',', quotechar='"')
-        for row in reader:
+        for i, row in enumerate(reader):
             source_file, link_id = row['source file'], row[rowname]
             if link_id:
                 if link_id not in link_d:
                     link_d[link_id] = collections.defaultdict(list)
 
-                link_d[link_id][source_file].append(row['record id'])
+                link_d[link_id][source_file].append(i)
 
     link_s = set()
 
     for members in link_d.values():
-        for pair in itertools.product(*members.values()):
-            link_s.add(frozenset(pair))
+        if len(members.values()) > 1:
+            for pair in itertools.product(*members.values()):
+                assert len(pair) == 2
+                link_s.add(frozenset(pair))
 
     return link_s
 
 clusters = 'gazetteer_output.csv'
 
 true_dupes = linkPairs(clusters, 'unique_id')
-test_dupes = linkPairs(clusters, 'Link ID')
+test_dupes = linkPairs(clusters, 'Cluster ID')
 
 evaluateDuplicates(test_dupes, true_dupes)
 
