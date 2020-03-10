@@ -15,13 +15,17 @@ script:
   - pycco record_linkage_example/record_linkage_example.py
   - pycco gazetteer_example/gazetteer_example.py
   - pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
+
 after_success:
-  - git config user.name "Travis CI"
-  - git config user.email "fgregg@uchicago.edu"
   - git add docs/*
   - git commit -m "deploy to github pages"
-  - git push --force --quiet "https://${GH_TOKEN}@${GH_REF}" gh-pages:gh-pages > /dev/null 2>&1
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GH_TOKEN  # Set in the settings page of your repository, as a secure variable
+  keep_history: true
+  on:
+    branch: master
 env:
   global:
-  - GH_REF=github.com/datamade/dedupe-examples.git
   - secure: zIsxZ8rwo/UjtQXGLS1LfCEEC+45j6nRQJg0Uy0pn+iJqkSMA0opOm/gtBpSFiQlkJIDPDIMqUUkzwiTiT0OojLJnfjdboARi62zx8BzFMKcj0XD0e8tJBEqUa2w1BeFWjFYevUoTQzpYF1Lz1jCk18g/WjYu8+GvPJIu5ianSQ=
