@@ -2,30 +2,29 @@ language: python
 cache: pip
 branches:
   only:
-    - master
+  - master
 install:
-  - pip install pycco
+- pip install pycco
 before script:
-  - git checkout -b gh-pages
+- git checkout -b gh-pages
 script:
-  - pycco csv_example/csv_example.py
-  - pycco mysql_example/mysql_example.py
-  - pycco mysql_example/mysql_init_db.py
-  - pycco patent_example/patent_example.py
-  - pycco record_linkage_example/record_linkage_example.py
-  - pycco gazetteer_example/gazetteer_example.py
-  - pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
-
+- pycco csv_example/csv_example.py
+- pycco mysql_example/mysql_example.py
+- pycco mysql_example/mysql_init_db.py
+- pycco patent_example/patent_example.py
+- pycco record_linkage_example/record_linkage_example.py
+- pycco gazetteer_example/gazetteer_example.py
+- pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
 after_success:
-  - git add docs/*
-  - git commit -m "deploy to github pages"
+- git add docs/*
+- git commit -m "deploy to github pages"
 deploy:
   provider: pages
   skip_cleanup: true
-  github_token: $GH_TOKEN  # Set in the settings page of your repository, as a secure variable
+  github_token: "$GH_TOKEN"
   keep_history: true
   on:
     branch: master
 env:
   global:
-  - secure: zIsxZ8rwo/UjtQXGLS1LfCEEC+45j6nRQJg0Uy0pn+iJqkSMA0opOm/gtBpSFiQlkJIDPDIMqUUkzwiTiT0OojLJnfjdboARi62zx8BzFMKcj0XD0e8tJBEqUa2w1BeFWjFYevUoTQzpYF1Lz1jCk18g/WjYu8+GvPJIu5ianSQ=
+  - secure: SrD1dKnIq8DKl4i81tF5GQCv/f7mVb5NQaOPU3NrnU5RyifdXJbwk3sMDzVJT/pgmAgIgpQLdGYhjH0irOn4DElZv3e7/+P9ztzHToEnkODfxPvvpgji9LbM21AW/Hy90rGWzY7pnrcN2KaacFId89HQAbY69SVDgDnK2EgFunk=
