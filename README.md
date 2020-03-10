@@ -66,7 +66,7 @@ python record_linkage_example.py
 
 **To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](https://dedupeio.github.io/dedupe-examples/docs/record_linkage_example.html).**
 
-### [Gazetteer example](https://dedupeio.github.io/dedupe-examples/docs/gazetteer.html) -  electronics products
+### [Gazetteer example](https://dedupeio.github.io/dedupe-examples/docs/gazetteer_example.html) -  electronics products
 This example links two spreadsheets of electronics products and links up the matching entries using the Gazetteer class
 
 ```bash
