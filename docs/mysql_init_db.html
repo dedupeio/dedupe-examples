@@ -19,26 +19,21 @@
       </div>
       <p>This is a setup script for mysql_example.  It downloads a zip file of
 Illinois campaign contributions and loads them into a MySQL database
-named 'contributions'.</p>
+named &lsquo;contributions&rsquo;.</p>
 <p><strong>Note:</strong> You will need to run this script first before execuing
 <a href="mysql_example.html">mysql_example.py</a>.</p>
 <p>Tables created:
-<em> raw_table - raw import of entire CSV file
-</em> donors - all distinct donors based on name and address
-<em> recipients - all distinct campaign contribution recipients
-</em> contributions - contribution amounts tied to donor and recipients tables</p>
+* raw_table - raw import of entire CSV file
+* donors - all distinct donors based on name and address
+* recipients - all distinct campaign contribution recipients
+* contributions - contribution amounts tied to donor and recipients tables</p>
     </div>
     <div class='code'>
-      <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
-
-<span class="kn">import</span> <span class="nn">os</span>
+      <div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">zipfile</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
-<span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">urllib2</span> <span class="kn">import</span> <span class="n">urlopen</span>  <span class="c1"># Python2</span>
-<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">urllib.request</span> <span class="kn">import</span> <span class="n">urlopen</span>   <span class="c1"># Python3</span>
+<span class="kn">from</span> <span class="nn">urllib.request</span> <span class="kn">import</span> <span class="n">urlopen</span>
 
 <span class="kn">import</span> <span class="nn">MySQLdb</span>
 
@@ -48,7 +43,7 @@ named 'contributions'.</p>
 <span class="n">contributions_txt_file</span> <span class="o">=</span> <span class="s1">&#39;Illinois-campaign-contributions.txt&#39;</span>
 
 <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">contributions_zip_file</span><span class="p">)</span> <span class="p">:</span>
-    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;downloading&#39;</span><span class="p">,</span> <span class="n">contributions_zip_file</span><span class="p">,</span> <span class="s1">&#39;(~60mb) ...&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;downloading&#39;</span><span class="p">,</span> <span class="n">contributions_zip_file</span><span class="p">,</span> <span class="s1">&#39;(~60mb) ...&#39;</span><span class="p">)</span>
     <span class="n">u</span> <span class="o">=</span> <span class="n">urlopen</span><span class="p">(</span><span class="s1">&#39;https://s3.amazonaws.com/dedupe-data/Illinois-campaign-contributions.txt.zip&#39;</span><span class="p">)</span>
     <span class="n">localFile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">contributions_zip_file</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span>
     <span class="n">localFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
@@ -56,7 +51,7 @@ named 'contributions'.</p>
 
 <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">contributions_txt_file</span><span class="p">)</span> <span class="p">:</span>
     <span class="n">zip_file</span> <span class="o">=</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">contributions_zip_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
-    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;extracting </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">contributions_zip_file</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;extracting </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">contributions_zip_file</span><span class="p">)</span>
     <span class="n">zip_file_contents</span> <span class="o">=</span> <span class="n">zip_file</span><span class="o">.</span><span class="n">namelist</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">zip_file_contents</span><span class="p">:</span>
         <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;.txt&#39;</span> <span class="ow">in</span> <span class="n">f</span><span class="p">):</span>
@@ -65,10 +60,11 @@ named 'contributions'.</p>
 
 <span class="n">conn</span> <span class="o">=</span> <span class="n">MySQLdb</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">read_default_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;/mysql.cnf&#39;</span><span class="p">,</span> 
                        <span class="n">local_infile</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                       <span class="n">sql_mode</span><span class="o">=</span><span class="s2">&quot;ALLOW_INVALID_DATES&quot;</span><span class="p">,</span>
                        <span class="n">db</span><span class="o">=</span><span class="s1">&#39;contributions&#39;</span><span class="p">)</span>
 <span class="n">c</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
 
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;importing raw data from csv...&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;importing raw data from csv...&#39;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS raw_table&quot;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS donors&quot;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS recipients&quot;</span><span class="p">)</span>
@@ -108,10 +104,64 @@ named 'contributions'.</p>
           <span class="s2">&quot; election_year, &quot;</span>
           <span class="s2">&quot; report_period_begin, report_period_end, &quot;</span>
           <span class="s2">&quot; committee_name, committee_id, @dummy)&quot;</span><span class="p">,</span>
-          <span class="p">(</span><span class="n">contributions_txt_file</span><span class="p">,))</span>
+          <span class="p">(</span><span class="n">contributions_txt_file</span><span class="p">,))</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-1'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-1'>#</a>
+      </div>
+      <p>Remove the very few records that mess up the demo 
+(demo purposes only! Don&rsquo;t do something like this in production)</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DELETE FROM raw_table WHERE LENGTH(date_recieved) &lt; 10&quot;</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-2'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-2'>#</a>
+      </div>
+      <p>set empty, non-zero, strings in date columns to null</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;UPDATE raw_table SET report_period_begin = NULL WHERE LENGTH(report_period_begin) &lt; 10&quot;</span><span class="p">)</span>
+<span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;UPDATE raw_table SET report_period_end = NULL WHERE LENGTH(report_period_end) &lt; 10&quot;</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-3'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-3'>#</a>
+      </div>
+      <p>committee ID is requred. Remove the 2 rows that don&rsquo;t have it.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DELETE FROM raw_table WHERE committee_id=&#39;&#39;&quot;</span><span class="p">);</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-4'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-4'>#</a>
+      </div>
+      <p>There&rsquo;s a record with a date stuck in the committee_id column, which causes
+problems when inserting into the contributions table below. Get rid of it this 
+way.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;DELETE FROM raw_table WHERE LENGTH( committee_id ) &gt; 9&quot;</span><span class="p">)</span>
 <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating donors table...&#39;</span><span class="p">)</span>
+
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;creating donors table...&#39;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE donors &quot;</span>
           <span class="s2">&quot;(donor_id INTEGER PRIMARY KEY AUTO_INCREMENT, &quot;</span>
           <span class="s2">&quot; last_name VARCHAR(70), first_name VARCHAR(35), &quot;</span>
@@ -131,7 +181,7 @@ named 'contributions'.</p>
 <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
 
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating indexes on donors table&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;creating indexes on donors table&#39;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX donors_donor_info ON donors &quot;</span>
           <span class="s2">&quot;(last_name, first_name, address_1, address_2, city, &quot;</span>
           <span class="s2">&quot; state, zip)&quot;</span><span class="p">)</span>
@@ -139,7 +189,7 @@ named 'contributions'.</p>
 
 
 
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating recipients table...&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;creating recipients table...&#39;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE recipients &quot;</span>
           <span class="s2">&quot;(recipient_id INTEGER PRIMARY KEY AUTO_INCREMENT, name VARCHAR(70)) &quot;</span>
           <span class="s2">&quot;CHARACTER SET utf8 COLLATE utf8_unicode_ci&quot;</span><span class="p">)</span>
@@ -148,7 +198,7 @@ named 'contributions'.</p>
           <span class="s2">&quot;SELECT DISTINCT committee_id, committee_name FROM raw_table&quot;</span><span class="p">)</span>
 <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating contributions table&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;creating contributions table&#39;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE contributions &quot;</span>
           <span class="s2">&quot;(contribution_id INT, donor_id INT, recipient_id INT, &quot;</span>
           <span class="s2">&quot; report_type VARCHAR(24), date_recieved DATE, &quot;</span>
@@ -186,7 +236,7 @@ named 'contributions'.</p>
           <span class="s2">&quot;donors.zip = TRIM(raw_table.zip)&quot;</span><span class="p">)</span>
 <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;creating indexes on contributions&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;creating indexes on contributions&#39;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;ALTER TABLE contributions ADD PRIMARY KEY(contribution_id)&quot;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX donor_idx ON contributions (donor_id)&quot;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE INDEX recipient_idx ON contributions (recipient_id)&quot;</span><span class="p">)</span>
@@ -194,7 +244,7 @@ named 'contributions'.</p>
 
 <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;nullifying empty strings in donors&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;nullifying empty strings in donors&#39;</span><span class="p">)</span>
 <span class="n">c</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;UPDATE donors &quot;</span>
           <span class="s2">&quot;SET &quot;</span>
           <span class="s2">&quot;first_name = CASE first_name WHEN &#39;&#39; THEN NULL ELSE first_name END, &quot;</span>
@@ -232,7 +282,7 @@ named 'contributions'.</p>
 
 <span class="n">c</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">)</span>
 
 </pre></div>
     </div>

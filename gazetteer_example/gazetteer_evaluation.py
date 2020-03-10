@@ -34,12 +34,14 @@ def linkPairs(filename, rowname) :
     link_s = set()
 
     for members in link_d.values():
-        for pair in itertools.product(*members.values()):
-            link_s.add(frozenset(pair))
+        if len(members.values()) > 1:
+            for pair in itertools.product(*members.values()):
+                assert len(pair) == 2
+                link_s.add(frozenset(pair))
 
     return link_s
 
-clusters = 'data_matching_output.csv'
+clusters = 'gazetteer_output.csv'
 
 true_dupes = linkPairs(clusters, 'unique_id')
 test_dupes = linkPairs(clusters, 'Cluster ID')

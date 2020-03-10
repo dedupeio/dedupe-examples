@@ -17,7 +17,7 @@ cd dedupe-examples
 ```
 
 ### Setup
-We recommend using [virtualenv](http://virtualenv.readthedocs.org/en/latest/virtualenv.html) and [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/install.html) for working in a virtualized development environment. [Read how to set up virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/).
+We recommend using [virtualenv](http://virtualenv.readthedocs.io/en/stable/) and [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/install.html) for working in a virtualized development environment. [Read how to set up virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/).
 
 Once you have virtualenvwrapper set up,
 
@@ -65,6 +65,15 @@ python record_linkage_example.py
 ```
 
 **To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](https://dedupeio.github.io/dedupe-examples/docs/record_linkage_example.html).**
+
+### [Gazetteer example](https://dedupeio.github.io/dedupe-examples/docs/gazetteer.html) -  electronics products
+This example links two spreadsheets of electronics products and links up the matching entries using the Gazetteer class
+
+```bash
+cd gazetteer_example.py
+python gazetteer_example.py
+```
+
 
 ### [MySQL example](https://dedupeio.github.io/dedupe-examples/docs/mysql_example.html) - IL campaign contributions
 

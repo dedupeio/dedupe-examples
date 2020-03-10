@@ -2,14 +2,14 @@
 <html>
 <head>
   <meta http-equiv="content-type" content="text/html;charset=utf-8">
-  <title>record_linkage_example.py</title>
+  <title>gazetteer_example.py</title>
   <link rel="stylesheet" href="pycco.css">
 </head>
 <body>
 <div id='container'>
   <div id="background"></div>
   <div class='section'>
-    <div class='docs'><h1>record_linkage_example.py</h1></div>
+    <div class='docs'><h1>gazetteer_example.py</h1></div>
   </div>
   <div class='clearall'>
   <div class='section' id='section-0'>
@@ -17,10 +17,9 @@
       <div class='octowrap'>
         <a class='octothorpe' href='#section-0'>#</a>
       </div>
-      <p>This code demonstrates how to use RecordLink with two comma separated
-values (CSV) files. We have listings of products from two different
-online stores. The task is to link products between the datasets.</p>
-<p>The output will be a CSV with our linkded results.</p>
+      <p>This code demonstrates the Gazetteer.</p>
+<p>We will use one of the sample files from the RecordLink example as the
+canonical set.</p>
     </div>
     <div class='code'>
       <div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
@@ -28,6 +27,7 @@ online stores. The task is to link products between the datasets.</p>
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">optparse</span>
+<span class="kn">import</span> <span class="nn">collections</span>
 
 <span class="kn">import</span> <span class="nn">dedupe</span>
 <span class="kn">from</span> <span class="nn">unidecode</span> <span class="kn">import</span> <span class="n">unidecode</span></pre></div>
@@ -62,7 +62,7 @@ Things like casing, extra spaces, quotes and new lines can be ignored.</p>
     <span class="n">column</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span>
     <span class="n">column</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span>
     <span class="n">column</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span>
-    <span class="n">column</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;  +&#39;</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span>
+    <span class="n">column</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39; +&#39;</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span>
     <span class="n">column</span> <span class="o">=</span> <span class="n">column</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">column</span><span class="p">:</span>
         <span class="n">column</span> <span class="o">=</span> <span class="kc">None</span>
@@ -125,8 +125,9 @@ where the key is a unique record ID.</p>
       <div class='octowrap'>
         <a class='octothorpe' href='#section-6'>#</a>
       </div>
-      <p>dedupe uses Python logging to show or suppress verbose output. Added for convenience.
-To enable verbose logging, run <code>python examples/csv_example/csv_example.py -v</code></p>
+      <p>dedupe uses Python logging to show or suppress verbose output. Added
+for convenience.  To enable verbose logging, run <code>python
+examples/csv_example/csv_example.py -v</code></p>
     </div>
     <div class='code'>
       <div class="highlight"><pre>    <span class="n">optp</span> <span class="o">=</span> <span class="n">optparse</span><span class="o">.</span><span class="n">OptionParser</span><span class="p">()</span>
@@ -152,16 +153,19 @@ To enable verbose logging, run <code>python examples/csv_example/csv_example.py 
       <h2>Setup</h2>
     </div>
     <div class='code'>
-      <div class="highlight"><pre>    <span class="n">output_file</span> <span class="o">=</span> <span class="s1">&#39;data_matching_output.csv&#39;</span>
-    <span class="n">settings_file</span> <span class="o">=</span> <span class="s1">&#39;data_matching_learned_settings&#39;</span>
-    <span class="n">training_file</span> <span class="o">=</span> <span class="s1">&#39;data_matching_training.json&#39;</span>
+      <div class="highlight"><pre>    <span class="n">output_file</span> <span class="o">=</span> <span class="s1">&#39;gazetteer_output.csv&#39;</span>
+    <span class="n">settings_file</span> <span class="o">=</span> <span class="s1">&#39;gazetteer_learned_settings&#39;</span>
+    <span class="n">training_file</span> <span class="o">=</span> <span class="s1">&#39;gazetteer_training.json&#39;</span>
 
-    <span class="n">left_file</span> <span class="o">=</span> <span class="s1">&#39;AbtBuy_Abt.csv&#39;</span>
-    <span class="n">right_file</span> <span class="o">=</span> <span class="s1">&#39;AbtBuy_Buy.csv&#39;</span>
+    <span class="n">canon_file</span> <span class="o">=</span> <span class="s1">&#39;AbtBuy_Buy.csv&#39;</span>
+    <span class="n">messy_file</span> <span class="o">=</span> <span class="s1">&#39;AbtBuy_Abt.csv&#39;</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;importing data ...&#39;</span><span class="p">)</span>
-    <span class="n">data_1</span> <span class="o">=</span> <span class="n">readData</span><span class="p">(</span><span class="n">left_file</span><span class="p">)</span>
-    <span class="n">data_2</span> <span class="o">=</span> <span class="n">readData</span><span class="p">(</span><span class="n">right_file</span><span class="p">)</span></pre></div>
+    <span class="n">messy</span> <span class="o">=</span> <span class="n">readData</span><span class="p">(</span><span class="n">messy_file</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;N data 1 records: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">messy</span><span class="p">)))</span>
+
+    <span class="n">canonical</span> <span class="o">=</span> <span class="n">readData</span><span class="p">(</span><span class="n">canon_file</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;N data 2 records: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">canonical</span><span class="p">)))</span></pre></div>
     </div>
   </div>
   <div class='clearall'></div>
@@ -174,9 +178,16 @@ To enable verbose logging, run <code>python examples/csv_example/csv_example.py 
     </div>
     <div class='code'>
       <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">descriptions</span><span class="p">():</span>
-        <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="p">(</span><span class="n">data_1</span><span class="p">,</span> <span class="n">data_2</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="p">(</span><span class="n">messy</span><span class="p">,</span> <span class="n">canonical</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                <span class="k">yield</span> <span class="n">record</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span></pre></div>
+                <span class="k">yield</span> <span class="n">record</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">settings_file</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;reading from&#39;</span><span class="p">,</span> <span class="n">settings_file</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_file</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span><span class="p">:</span>
+            <span class="n">gazetteer</span> <span class="o">=</span> <span class="n">dedupe</span><span class="o">.</span><span class="n">StaticGazetteer</span><span class="p">(</span><span class="n">sf</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span></pre></div>
     </div>
   </div>
   <div class='clearall'></div>
@@ -185,26 +196,9 @@ To enable verbose logging, run <code>python examples/csv_example/csv_example.py 
       <div class='octowrap'>
         <a class='octothorpe' href='#section-9'>#</a>
       </div>
-      <h2>Training</h2>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre>    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">settings_file</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;reading from&#39;</span><span class="p">,</span> <span class="n">settings_file</span><span class="p">)</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_file</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span><span class="p">:</span>
-            <span class="n">linker</span> <span class="o">=</span> <span class="n">dedupe</span><span class="o">.</span><span class="n">StaticRecordLink</span><span class="p">(</span><span class="n">sf</span><span class="p">)</span>
-
-    <span class="k">else</span><span class="p">:</span></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-10'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-10'>#</a>
-      </div>
-      <p>Define the fields the linker will pay attention to</p>
-<p>Notice how we are telling the linker to use a custom field comparator
-for the &lsquo;price&rsquo; field.</p>
+      <p>Define the fields the gazetteer will pay attention to</p>
+<p>Notice how we are telling the gazetteer to use a custom
+field comparator for the &lsquo;price&rsquo; field.</p>
     </div>
     <div class='code'>
       <div class="highlight"><pre>        <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span>
@@ -216,24 +210,24 @@ for the &lsquo;price&rsquo; field.</p>
     </div>
   </div>
   <div class='clearall'></div>
+  <div class='section' id='section-10'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-10'>#</a>
+      </div>
+      <p>Create a new gazetteer object and pass our data model to it.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">gazetteer</span> <span class="o">=</span> <span class="n">dedupe</span><span class="o">.</span><span class="n">Gazetteer</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
   <div class='section' id='section-11'>
     <div class='docs'>
       <div class='octowrap'>
         <a class='octothorpe' href='#section-11'>#</a>
       </div>
-      <p>Create a new linker object and pass our data model to it.</p>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre>        <span class="n">linker</span> <span class="o">=</span> <span class="n">dedupe</span><span class="o">.</span><span class="n">RecordLink</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-12'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-12'>#</a>
-      </div>
-      <p>If we have training data saved from a previous run of linker,
+      <p>If we have training data saved from a previous run of gazetteer,
 look for it an load it in.
 <strong>Note:</strong> if you want to train from scratch, delete the training_file</p>
     </div>
@@ -241,19 +235,16 @@ look for it an load it in.
       <div class="highlight"><pre>        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">training_file</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;reading labeled examples from &#39;</span><span class="p">,</span> <span class="n">training_file</span><span class="p">)</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">training_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">tf</span><span class="p">:</span>
-                <span class="n">linker</span><span class="o">.</span><span class="n">prepare_training</span><span class="p">(</span><span class="n">data_1</span><span class="p">,</span>
-                                        <span class="n">data_2</span><span class="p">,</span>
-                                        <span class="n">training_file</span><span class="o">=</span><span class="n">tf</span><span class="p">,</span>
-                                        <span class="n">sample_size</span><span class="o">=</span><span class="mi">15000</span><span class="p">)</span>
+                <span class="n">gazetteer</span><span class="o">.</span><span class="n">prepare_training</span><span class="p">(</span><span class="n">messy</span><span class="p">,</span> <span class="n">canonical</span><span class="p">,</span> <span class="n">training_file</span><span class="o">=</span><span class="n">tf</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">linker</span><span class="o">.</span><span class="n">prepare_training</span><span class="p">(</span><span class="n">data_1</span><span class="p">,</span> <span class="n">data_2</span><span class="p">,</span> <span class="n">sample_size</span><span class="o">=</span><span class="mi">15000</span><span class="p">)</span></pre></div>
+            <span class="n">gazetteer</span><span class="o">.</span><span class="n">prepare_training</span><span class="p">(</span><span class="n">messy</span><span class="p">,</span> <span class="n">canonical</span><span class="p">)</span></pre></div>
     </div>
   </div>
   <div class='clearall'></div>
-  <div class='section' id='section-13'>
+  <div class='section' id='section-12'>
     <div class='docs'>
       <div class='octowrap'>
-        <a class='octothorpe' href='#section-13'>#</a>
+        <a class='octothorpe' href='#section-12'>#</a>
       </div>
       <h2>Active learning</h2>
 <p>Dedupe will find the next pair of records
@@ -265,9 +256,22 @@ press &lsquo;f&rsquo; when you are finished</p>
     <div class='code'>
       <div class="highlight"><pre>        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;starting active labeling...&#39;</span><span class="p">)</span>
 
-        <span class="n">dedupe</span><span class="o">.</span><span class="n">console_label</span><span class="p">(</span><span class="n">linker</span><span class="p">)</span>
+        <span class="n">dedupe</span><span class="o">.</span><span class="n">console_label</span><span class="p">(</span><span class="n">gazetteer</span><span class="p">)</span>
 
-        <span class="n">linker</span><span class="o">.</span><span class="n">train</span><span class="p">()</span></pre></div>
+        <span class="n">gazetteer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-13'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-13'>#</a>
+      </div>
+      <p>When finished, save our training away to disk</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">training_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tf</span><span class="p">:</span>
+            <span class="n">gazetteer</span><span class="o">.</span><span class="n">write_training</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span></pre></div>
     </div>
   </div>
   <div class='clearall'></div>
@@ -276,104 +280,36 @@ press &lsquo;f&rsquo; when you are finished</p>
       <div class='octowrap'>
         <a class='octothorpe' href='#section-14'>#</a>
       </div>
-      <p>When finished, save our training away to disk</p>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">training_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">tf</span><span class="p">:</span>
-            <span class="n">linker</span><span class="o">.</span><span class="n">write_training</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-15'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-15'>#</a>
-      </div>
       <p>Save our weights and predicates to disk.  If the settings file
 exists, we will skip all the training and learning next time we run
 this file.</p>
     </div>
     <div class='code'>
       <div class="highlight"><pre>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_file</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span><span class="p">:</span>
-            <span class="n">linker</span><span class="o">.</span><span class="n">writeSettings</span><span class="p">(</span><span class="n">sf</span><span class="p">)</span></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-16'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-16'>#</a>
-      </div>
-      <h2>Blocking</h2>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-17'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-17'>#</a>
-      </div>
-      <h2>Clustering</h2>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-18'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-18'>#</a>
-      </div>
-      <p>Find the threshold that will maximize a weighted average of our
-precision and recall.  When we set the recall weight to 2, we are
-saying we care twice as much about recall as we do precision.</p>
-<p>If we had more data, we would not pass in all the blocked data into
-this function but a representative sample.</p>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;clustering...&#39;</span><span class="p">)</span>
-    <span class="n">linked_records</span> <span class="o">=</span> <span class="n">linker</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_1</span><span class="p">,</span> <span class="n">data_2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">gazetteer</span><span class="o">.</span><span class="n">write_settings</span><span class="p">(</span><span class="n">sf</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;# duplicate sets&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">linked_records</span><span class="p">))</span></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-19'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-19'>#</a>
-      </div>
-      <h2>Writing Results</h2>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre></pre></div>
-    </div>
-  </div>
-  <div class='clearall'></div>
-  <div class='section' id='section-20'>
-    <div class='docs'>
-      <div class='octowrap'>
-        <a class='octothorpe' href='#section-20'>#</a>
-      </div>
-      <p>Write our original data back out to a CSV with a new column called
-&lsquo;Cluster ID&rsquo; which indicates which records refer to each other.</p>
-    </div>
-    <div class='code'>
-      <div class="highlight"><pre>    <span class="n">cluster_membership</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">cluster_id</span><span class="p">,</span> <span class="p">(</span><span class="n">cluster</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">linked_records</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">record_id</span> <span class="ow">in</span> <span class="n">cluster</span><span class="p">:</span>
-            <span class="n">cluster_membership</span><span class="p">[</span><span class="n">record_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Cluster ID&#39;</span><span class="p">:</span> <span class="n">cluster_id</span><span class="p">,</span>
-                                             <span class="s1">&#39;Link Score&#39;</span><span class="p">:</span> <span class="n">score</span><span class="p">}</span>
+        <span class="n">gazetteer</span><span class="o">.</span><span class="n">cleanup_training</span><span class="p">()</span>
+
+    <span class="n">gazetteer</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">canonical</span><span class="p">)</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="n">gazetteer</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">messy</span><span class="p">,</span> <span class="n">n_matches</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">generator</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">cluster_membership</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">cluster_id</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">cluster_id</span><span class="p">,</span> <span class="p">(</span><span class="n">messy_id</span><span class="p">,</span> <span class="n">matches</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">canon_id</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">:</span>
+            <span class="n">cluster_membership</span><span class="p">[</span><span class="n">messy_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Cluster ID&#39;</span><span class="p">:</span> <span class="n">cluster_id</span><span class="p">,</span>
+                                            <span class="s1">&#39;Link Score&#39;</span><span class="p">:</span> <span class="n">score</span><span class="p">}</span>
+            <span class="n">cluster_membership</span><span class="p">[</span><span class="n">canon_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Cluster ID&#39;</span><span class="p">:</span> <span class="n">cluster_id</span><span class="p">,</span>
+                                            <span class="s1">&#39;Link Score&#39;</span><span class="p">:</span> <span class="n">score</span><span class="p">}</span>
+            <span class="n">cluster_id</span> <span class="o">+=</span> <span class="mi">1</span>
 
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
 
         <span class="n">header_unwritten</span> <span class="o">=</span> <span class="kc">True</span>
 
-        <span class="k">for</span> <span class="n">fileno</span><span class="p">,</span> <span class="n">filename</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">((</span><span class="n">left_file</span><span class="p">,</span> <span class="n">right_file</span><span class="p">)):</span>
+        <span class="k">for</span> <span class="n">fileno</span><span class="p">,</span> <span class="n">filename</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">((</span><span class="n">messy_file</span><span class="p">,</span> <span class="n">canon_file</span><span class="p">)):</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_input</span><span class="p">:</span>
                 <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">f_input</span><span class="p">)</span>
 

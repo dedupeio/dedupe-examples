@@ -1,18 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-This code demonstrates how to use RecordLink with two comma separated
-values (CSV) files. We have listings of products from two different
-online stores. The task is to link products between the datasets.
+This code demonstrates the Gazetteer.
 
-The output will be a CSV with our linkded results.
+We will use one of the sample files from the RecordLink example as the
+canonical set.
 
 """
+
 import os
 import csv
 import re
 import logging
 import optparse
+import collections
 
 import dedupe
 from unidecode import unidecode
@@ -31,7 +32,7 @@ def preProcess(column):
     column = re.sub("'", '', column)
     column = re.sub(",", '', column)
     column = re.sub(":", ' ', column)
-    column = re.sub('  +', ' ', column)
+    column = re.sub(' +', ' ', column)
     column = column.strip().strip('"').strip("'").lower().strip()
     if not column:
         column = None
@@ -61,8 +62,9 @@ if __name__ == '__main__':
 
     # ## Logging
 
-    # dedupe uses Python logging to show or suppress verbose output. Added for convenience.
-    # To enable verbose logging, run `python examples/csv_example/csv_example.py -v`
+    # dedupe uses Python logging to show or suppress verbose output. Added
+    # for convenience.  To enable verbose logging, run `python
+    # examples/csv_example/csv_example.py -v`
     optp = optparse.OptionParser()
     optp.add_option('-v', '--verbose', dest='verbose', action='count',
                     help='Increase verbosity (specify multiple times for more)'
@@ -78,34 +80,35 @@ if __name__ == '__main__':
 
     # ## Setup
 
-    output_file = 'data_matching_output.csv'
-    settings_file = 'data_matching_learned_settings'
-    training_file = 'data_matching_training.json'
+    output_file = 'gazetteer_output.csv'
+    settings_file = 'gazetteer_learned_settings'
+    training_file = 'gazetteer_training.json'
 
-    left_file = 'AbtBuy_Abt.csv'
-    right_file = 'AbtBuy_Buy.csv'
+    canon_file = 'AbtBuy_Buy.csv'
+    messy_file = 'AbtBuy_Abt.csv'
 
     print('importing data ...')
-    data_1 = readData(left_file)
-    data_2 = readData(right_file)
+    messy = readData(messy_file)
+    print('N data 1 records: {}'.format(len(messy)))
+
+    canonical = readData(canon_file)
+    print('N data 2 records: {}'.format(len(canonical)))
 
     def descriptions():
-        for dataset in (data_1, data_2):
+        for dataset in (messy, canonical):
             for record in dataset.values():
                 yield record['description']
-
-    # ## Training
 
     if os.path.exists(settings_file):
         print('reading from', settings_file)
         with open(settings_file, 'rb') as sf:
-            linker = dedupe.StaticRecordLink(sf)
+            gazetteer = dedupe.StaticGazetteer(sf)
 
     else:
-        # Define the fields the linker will pay attention to
+        # Define the fields the gazetteer will pay attention to
         #
-        # Notice how we are telling the linker to use a custom field comparator
-        # for the 'price' field.
+        # Notice how we are telling the gazetteer to use a custom
+        # field comparator for the 'price' field.
         fields = [
             {'field': 'title', 'type': 'String'},
             {'field': 'title', 'type': 'Text', 'corpus': descriptions()},
@@ -113,21 +116,18 @@ if __name__ == '__main__':
              'has missing': True, 'corpus': descriptions()},
             {'field': 'price', 'type': 'Price', 'has missing': True}]
 
-        # Create a new linker object and pass our data model to it.
-        linker = dedupe.RecordLink(fields)
+        # Create a new gazetteer object and pass our data model to it.
+        gazetteer = dedupe.Gazetteer(fields)
 
-        # If we have training data saved from a previous run of linker,
+        # If we have training data saved from a previous run of gazetteer,
         # look for it an load it in.
         # __Note:__ if you want to train from scratch, delete the training_file
         if os.path.exists(training_file):
             print('reading labeled examples from ', training_file)
             with open(training_file) as tf:
-                linker.prepare_training(data_1,
-                                        data_2,
-                                        training_file=tf,
-                                        sample_size=15000)
+                gazetteer.prepare_training(messy, canonical, training_file=tf)
         else:
-            linker.prepare_training(data_1, data_2, sample_size=15000)
+            gazetteer.prepare_training(messy, canonical)
 
         # ## Active learning
         # Dedupe will find the next pair of records
@@ -137,51 +137,42 @@ if __name__ == '__main__':
         # press 'f' when you are finished
         print('starting active labeling...')
 
-        dedupe.console_label(linker)
+        dedupe.console_label(gazetteer)
 
-        linker.train()
+        gazetteer.train()
 
         # When finished, save our training away to disk
         with open(training_file, 'w') as tf:
-            linker.write_training(tf)
+            gazetteer.write_training(tf)
 
         # Save our weights and predicates to disk.  If the settings file
         # exists, we will skip all the training and learning next time we run
         # this file.
         with open(settings_file, 'wb') as sf:
-            linker.writeSettings(sf)
+            gazetteer.write_settings(sf, index=True)
 
-    # ## Blocking
+        gazetteer.cleanup_training()
 
-    # ## Clustering
+    gazetteer.index(canonical)
 
-    # Find the threshold that will maximize a weighted average of our
-    # precision and recall.  When we set the recall weight to 2, we are
-    # saying we care twice as much about recall as we do precision.
-    #
-    # If we had more data, we would not pass in all the blocked data into
-    # this function but a representative sample.
-
-    print('clustering...')
-    linked_records = linker.join(data_1, data_2, 0.0)
-
-    print('# duplicate sets', len(linked_records))
-    # ## Writing Results
-
-    # Write our original data back out to a CSV with a new column called
-    # 'Cluster ID' which indicates which records refer to each other.
+    results = gazetteer.search(messy, n_matches=2, generator=True)
 
     cluster_membership = {}
-    for cluster_id, (cluster, score) in enumerate(linked_records):
-        for record_id in cluster:
-            cluster_membership[record_id] = {'Cluster ID': cluster_id,
-                                             'Link Score': score}
+    cluster_id = 0
+
+    for cluster_id, (messy_id, matches) in enumerate(results):
+        for canon_id, score in matches:
+            cluster_membership[messy_id] = {'Cluster ID': cluster_id,
+                                            'Link Score': score}
+            cluster_membership[canon_id] = {'Cluster ID': cluster_id,
+                                            'Link Score': score}
+            cluster_id += 1
 
     with open(output_file, 'w') as f:
 
         header_unwritten = True
 
-        for fileno, filename in enumerate((left_file, right_file)):
+        for fileno, filename in enumerate((messy_file, canon_file)):
             with open(filename) as f_input:
                 reader = csv.DictReader(f_input)
 
