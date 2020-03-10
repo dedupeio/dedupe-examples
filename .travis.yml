@@ -15,7 +15,7 @@ script:
   - pycco record_linkage_example/record_linkage_example.py
   - pycco gazetteer_example/gazetteer_example.py
   - pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
-deploy:
+after_success:
   - git config user.name "Travis CI"
   - git config user.email "fgregg@uchicago.edu"
   - git add docs/*
