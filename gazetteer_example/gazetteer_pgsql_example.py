@@ -1,7 +1,9 @@
 import itertools
+import os
 
 import dedupe
 import psycopg2
+import psycopg2.extras
 import dj_database_url
 
 # Set up a database connection. This example uses PostgreSQL and psycopg2, but
@@ -11,7 +13,7 @@ db_conf = dj_database_url.config()
 if not db_conf:
     raise Exception(
         'set DATABASE_URL environment variable with your connection, e.g. '
-        'export DATABASE_URL=postgres://user:password@host/mydatabase'
+        'export DATABASE_URL=postgres://user:password@host:port/mydatabase'
     )
 
 conn = psycopg2.connect(
@@ -38,138 +40,174 @@ class StaticDatabaseGazetteer(dedupe.StaticGazetteer):
         # (In Dedupe 2.x, replace this with self.fingerprinter)
         self.blocker.indexAll(data)
 
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS indexed_records
-            (block_key text, record_id INT, UNIQUE(block_key, record_id)
-        ''')
-        cursor.executemany(
-            'REPLACE INTO indexed_records VALUES (?, ?)',
-            self.blocker(data.items(), target=True)
-        )
-        cursor.execute('''
-            CREATE INDEX IF NOT EXISTS
-            indexed_records_block_key_idx
-            ON indexed_records
-            (block_key)
-        ''')
-        cursor.commit()
-        cursor.close()
+        with conn.cursor() as cursor:
+            cursor.execute('DROP TABLE IF EXISTS indexed_records')
+            cursor.execute('''
+                CREATE TABLE indexed_records
+                (block_key text, record_id INT, UNIQUE(block_key, record_id))
+            ''')
+            cursor.executemany(
+                'INSERT INTO indexed_records VALUES (%s, %s)',
+                self.blocker(data.items(), target=True)
+            )
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS
+                indexed_records_block_key_idx
+                ON indexed_records
+                (block_key)
+            ''')
 
     def _blockData(self, messy_data):
-        cursor = conn.cursor('gen_cursor')
-        cursor.execute('BEGIN')
-        cursor.execute('CREATE TEMPORARY TABLE blocking_map (block_key text, record_id INT)')
-        cursor.executemany(
-            'INSERT INTO blocking_map VALUES (?, ?)',
-            self.blocker(messy_data.items(), target=True)
-        )
-        cursor.execute('''
-            SELECT DISTINCT a.record_id, b.record_id, gaz.*
-            FROM blocking_map a
-            INNER JOIN indexed_records b
-            USING (block_key)
-            INNER JOIN gazetteer gaz
-            ON b.record_id = gaz.id
-            ORDER BY a.record_id
-        ''')
+        with conn.cursor() as cursor:
+            cursor.execute('CREATE TEMPORARY TABLE blocking_map (block_key text, record_id INT)')
+            cursor.executemany(
+                'INSERT INTO blocking_map VALUES (%s, %s)',
+                self.blocker(messy_data.items(), target=True)
+            )
+            cursor.execute('''
+                SELECT DISTINCT
+                    a.record_id AS blocking_record_id,
+                    b.record_id AS index_record_id,
+                    gaz.*
+                FROM blocking_map a
+                INNER JOIN indexed_records b
+                USING (block_key)
+                INNER JOIN gazetteer gaz
+                ON b.record_id = gaz.id
+                ORDER BY a.record_id
+            ''')
 
-        # Group and yield pairs.
-        pair_blocks = itertools.groupby(cursor, lambda x: x[0])
-        for _, pair_block in pair_blocks:
-            yield [((a_record_id, messy_data[a_record_id]),
-                    # TODO: Need to figure out how to format gazetteer data correctly.
-                    (b_record_id, dict(gaz_data)))
-                   for a_record_id, b_record_id, *gaz_data
-                   in pair_block]
+            # Group and yield pairs.
+            pair_blocks = itertools.groupby(cursor, lambda row: row['blocking_record_id'])
+            for _, pair_block in pair_blocks:
+                messy_record = []
+                blocked_records = []
+                for row in pair_block:
+                    if len(messy_record) == 0:
+                        # Append the unmatched record.
+                        blocking_record_id = row['blocking_record_id']
+                        messy_record = [(blocking_record_id, messy_data[blocking_record_id], set())]
 
-        cursor.execute('ROLLBACK')
-        cursor.close()
+                    index_record_id = row['index_record_id']
+                    index_record = {k: v for k, v in row.items() if not k.endswith('_record_id')}
+                    blocked_records.append(
+                        (index_record_id, index_record, set())
+                    )
+                yield [messy_record, blocked_records]
+
+            cursor.execute('DROP TABLE blocking_map')
 
 
 if __name__ == '__main__':
-
-    cursor = conn.cursor()
 
     # Load database tables
     canon_file = 'AbtBuy_Buy.csv'
     messy_file = 'AbtBuy_Abt.csv'
 
     print('Importing raw data from CSV...')
-    cursor.execute('DROP TABLE IF EXISTS messy')
-    cursor.execute('''
-        CREATE TABLE messy
-        (id INT, title VARCHAR(255), description VARCHAR(255), price MONEY)
-    ''')
-    with open(messy_file, 'rU') as fobj:
-        cursor.copy_expert(
-            'COPY messy (id, title, description, price) FROM STDIN CSV HEADER',
-            fobj
-        )
-    cursor.commit()
+    with conn.cursor() as cursor:
+        cursor.execute('DROP TABLE IF EXISTS messy')
+        cursor.execute('''
+            CREATE TABLE messy
+            (id INT, title TEXT, description TEXT, price MONEY, canonical_id INT)
+        ''')
+        with open(messy_file) as fobj:
+            cursor.copy_expert(
+                'COPY messy (id, title, description, price) FROM STDIN CSV HEADER',
+                fobj
+            )
+        cursor.execute('''
+            ALTER TABLE messy ALTER COLUMN price TYPE float USING price::numeric::float
+        ''')
 
-    cursor.execute('DROP TABLE IF EXISTS canonical')
-    cursor.execute('''
-        CREATE TABLE canonical
-        (id INT, title VARCHAR(255), description VARCHAR(255), price MONEY)
-    ''')
-    with open(canon_file, 'rU') as fobj:
-        cursor.copy_expert(
-            'COPY canonical (id, title, description, price) FROM STDIN CSV HEADER',
-            fobj
-        )
-    cursor.commit()
+        cursor.execute('DROP TABLE IF EXISTS gazetteer')
+        cursor.execute('''
+            CREATE TABLE gazetteer
+            (id INT, title TEXT, description TEXT, price MONEY)
+        ''')
+        with open(canon_file) as fobj:
+            cursor.copy_expert(
+                'COPY gazetteer (id, title, description, price) FROM STDIN CSV HEADER',
+                fobj
+            )
+        cursor.execute('''
+            ALTER TABLE gazetteer ALTER COLUMN price TYPE float USING price::numeric::float
+        ''')
 
     # Retrieve incoming messy records from the database.
-    cursor.execute('''
-        SELECT *
-        FROM messy
-    ''')
-    messy_records = {row['id']: dict(row) for row in cursor.fetchall()}
+    with conn.cursor() as cursor:
+        cursor.execute('''
+            SELECT *
+            FROM messy
+        ''')
+        messy_records = {row['id']: dict(row) for row in cursor.fetchall()}
 
-    # Retrieve all canonical records from the database.
-    cursor.execute('''
-        SELECT *
-        FROM canonical
-    ''')
-    canonical_records = {row['id']: dict(row) for row in cursor.fetchall()}
+        # Retrieve all canonical records from the database.
+        cursor.execute('''
+            SELECT *
+            FROM gazetteer
+        ''')
+        canonical_records = {row['id']: dict(row) for row in cursor.fetchall()}
 
     # Rehydrate Deduper from an existing learned settings file.
     # Instead of loading the settings file from the filesystem, you could also
     # imagine saving it to the database as a pickled object and then retrieving it
     # with a database query.
+    if not os.path.exists('gazetteer_learned_settings'):
+        raise FileNotFoundError(
+            'gazetteer_learned_settings file not found. '
+            'Did you run gazetteer_example.py before running this script?'
+        )
+
+    print('\nLoading Gazetteer from settings file...')
     with open('gazetteer_learned_settings', 'rb') as settings_file:
         gazetteer = StaticDatabaseGazetteer(settings_file)
 
     # Index the canonical records.
+    print('\nIndexing canonical records...')
     gazetteer.index(canonical_records)
 
     # Calculate the threshold.
+    print('\nCalculating threshold...')
     threshold = gazetteer.threshold(messy_records, recall_weight=1.0)
 
     # Match the incoming records at the calculated threshold, returning one match
     # per row in generator form. If any record doesn't have a match over the
     # threshold, it won't be returned in `results`.
+    print('\nMatching messy records...')
     results = gazetteer.match(messy_records, threshold=threshold)
 
     # Update the messy data to assign the new matches.
-    for matches in results:
-        for (messy_id, canonical_id), score in matches:
-            cursor.execute('''
-                UPDATE messy
-                SET canonical_id = %s
-                WHERE id = %s
-            ''', (canonical_id, messy_id)
-            )
+    print('\nUpdating messy data with match IDs...')
+    with conn.cursor() as cursor:
+        counter = 0
+        for matches in results:
+            for (messy_id, canonical_id), score in matches:
+                cursor.execute('''
+                    UPDATE messy
+                    SET canonical_id = %s
+                    WHERE id = %s
+                ''', (int(canonical_id), int(messy_id))
+                )
+                counter += 1
+    print('Updated %d matches' % counter)
 
     # Update the canonical dataset to insert any records that didn't have a
     # satisfactory match.
-    cursor.execute('''
-        INSERT INTO canonical
-        SELECT id
-        FROM messy
-        WHERE messy.canonical_id IS NULL
-    ''')
+    print('\nUpdating canonical data with unmatched records...')
+    with conn.cursor() as cursor:
+        cursor.execute('''
+            WITH unmatched_rows AS (
+                INSERT INTO gazetteer
+                SELECT id
+                FROM messy
+                WHERE messy.canonical_id IS NULL
+                RETURNING 1
+            )
+            SELECT count(*) from unmatched_rows
+        ''')
+        count = cursor.fetchone()['count']
+        print('Updated %d unmatched rows' % count)
 
     # Commit and close the database connection.
     conn.commit()
