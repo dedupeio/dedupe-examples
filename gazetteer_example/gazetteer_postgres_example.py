@@ -1,3 +1,12 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+This code demonstrates Gazetteer matching backed by a Postgres database.
+
+NOTE: This script uses the dedupe 1.x API. For an example of dedupe 2.x, see
+gazetteer_example.py.
+"""
+
 import itertools
 import os
 
@@ -101,8 +110,8 @@ class StaticDatabaseGazetteer(dedupe.StaticGazetteer):
 if __name__ == '__main__':
 
     # Load database tables
-    canon_file = 'AbtBuy_Buy.csv'
-    messy_file = 'AbtBuy_Abt.csv'
+    canon_file = os.path.join('data', 'AbtBuy_Buy.csv')
+    messy_file = os.path.join('data', 'AbtBuy_Abt.csv')
 
     print('Importing raw data from CSV...')
     with conn.cursor() as cursor:

@@ -84,8 +84,8 @@ if __name__ == '__main__':
     settings_file = 'gazetteer_learned_settings'
     training_file = 'gazetteer_training.json'
 
-    canon_file = 'AbtBuy_Buy.csv'
-    messy_file = 'AbtBuy_Abt.csv'
+    canon_file = os.path.join('data', 'AbtBuy_Buy.csv')
+    messy_file = os.path.join('data', 'AbtBuy_Abt.csv')
 
     print('importing data ...')
     messy = readData(messy_file)
