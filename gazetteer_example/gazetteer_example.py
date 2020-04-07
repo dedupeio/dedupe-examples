@@ -149,7 +149,7 @@ if __name__ == '__main__':
         # exists, we will skip all the training and learning next time we run
         # this file.
         with open(settings_file, 'wb') as sf:
-            gazetteer.write_settings(sf, index=True)
+            gazetteer.write_settings(sf)
 
         gazetteer.cleanup_training()
 
