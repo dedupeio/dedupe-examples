@@ -1,0 +1,2 @@
+dedupe>=2.0.0
+unidecode

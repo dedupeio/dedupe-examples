@@ -157,8 +157,8 @@ examples/csv_example/csv_example.py -v</code></p>
     <span class="n">settings_file</span> <span class="o">=</span> <span class="s1">&#39;gazetteer_learned_settings&#39;</span>
     <span class="n">training_file</span> <span class="o">=</span> <span class="s1">&#39;gazetteer_training.json&#39;</span>
 
-    <span class="n">canon_file</span> <span class="o">=</span> <span class="s1">&#39;AbtBuy_Buy.csv&#39;</span>
-    <span class="n">messy_file</span> <span class="o">=</span> <span class="s1">&#39;AbtBuy_Abt.csv&#39;</span>
+    <span class="n">canon_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;AbtBuy_Buy.csv&#39;</span><span class="p">)</span>
+    <span class="n">messy_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;AbtBuy_Abt.csv&#39;</span><span class="p">)</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;importing data ...&#39;</span><span class="p">)</span>
     <span class="n">messy</span> <span class="o">=</span> <span class="n">readData</span><span class="p">(</span><span class="n">messy_file</span><span class="p">)</span>
@@ -286,7 +286,7 @@ this file.</p>
     </div>
     <div class='code'>
       <div class="highlight"><pre>        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">settings_file</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">sf</span><span class="p">:</span>
-            <span class="n">gazetteer</span><span class="o">.</span><span class="n">write_settings</span><span class="p">(</span><span class="n">sf</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">gazetteer</span><span class="o">.</span><span class="n">write_settings</span><span class="p">(</span><span class="n">sf</span><span class="p">)</span>
 
         <span class="n">gazetteer</span><span class="o">.</span><span class="n">cleanup_training</span><span class="p">()</span>
 
