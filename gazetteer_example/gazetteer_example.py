@@ -84,8 +84,8 @@ if __name__ == '__main__':
     settings_file = 'gazetteer_learned_settings'
     training_file = 'gazetteer_training.json'
 
-    canon_file = 'AbtBuy_Buy.csv'
-    messy_file = 'AbtBuy_Abt.csv'
+    canon_file = os.path.join('data', 'AbtBuy_Buy.csv')
+    messy_file = os.path.join('data', 'AbtBuy_Abt.csv')
 
     print('importing data ...')
     messy = readData(messy_file)
@@ -149,7 +149,7 @@ if __name__ == '__main__':
         # exists, we will skip all the training and learning next time we run
         # this file.
         with open(settings_file, 'wb') as sf:
-            gazetteer.write_settings(sf, index=True)
+            gazetteer.write_settings(sf)
 
         gazetteer.cleanup_training()
 
