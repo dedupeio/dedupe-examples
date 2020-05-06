@@ -149,7 +149,7 @@ if __name__ == '__main__':
         # exists, we will skip all the training and learning next time we run
         # this file.
         with open(settings_file, 'wb') as sf:
-            linker.writeSettings(sf)
+            linker.write_settings(sf)
 
     # ## Blocking
 
