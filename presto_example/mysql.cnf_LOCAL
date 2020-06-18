@@ -1,0 +1,4 @@
+[client]
+user = your_mysql_user
+password = your_mysql_password
+default-character-set=utf8
