@@ -243,21 +243,9 @@ if __name__ == '__main__':
 
         with write_con:
             with write_con.cursor() as write_cur:
-                with tempfile.NamedTemporaryFile(
-                    prefix="blocking_map_",
-                    mode="w+",
-                    newline="",
-                ) as block_file:
-                    csv_writer = csv.writer(block_file, dialect=csv.unix_dialect)
-                    csv_writer.writerows(b_data)
-                    block_file.seek(0)
-                    write_cur.copy_expert("COPY blocking_map FROM STDIN CSV", block_file, size=10000)
-
-        # with write_con:
-        #     with write_con.cursor() as write_cur:
-        #         write_cur.copy_expert('COPY blocking_map_serial FROM STDIN WITH CSV',
-        #                               Readable(b_data),
-        #                               size=10000)
+                write_cur.copy_expert('COPY blocking_map_serial FROM STDIN WITH CSV',
+                                      Readable(b_data),
+                                      size=10000)
 
     # free up memory by removing indices
     deduper.fingerprinter.reset_indices()

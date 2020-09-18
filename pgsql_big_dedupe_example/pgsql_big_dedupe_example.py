@@ -26,7 +26,6 @@ import io
 import csv
 import multiprocessing
 import math
-import tempfile
 
 import dj_database_url
 import psycopg2
@@ -97,6 +96,10 @@ def parallel_fingerprinter(db_conf, deduper_fingerprinter, donor_partition_selec
                                 password=db_conf['PASSWORD'],
                                 host=db_conf['HOST'],
                                 cursor_factory=psycopg2.extras.RealDictCursor)
+    write_con = psycopg2.connect(database=db_conf['NAME'],
+                                 user=db_conf['USER'],
+                                 password=db_conf['PASSWORD'],
+                                 host=db_conf['HOST'])
 
     with read_con.cursor('donor_partition_select') as read_cur:
         read_cur.execute(donor_partition_select, (partition_offset, partition_end))
@@ -104,15 +107,11 @@ def parallel_fingerprinter(db_conf, deduper_fingerprinter, donor_partition_selec
         partition_data = ((row['donor_id'], row) for row in read_cur)
         b_data = deduper_fingerprinter(partition_data)
 
-        with tempfile.NamedTemporaryFile(
-            prefix="pid_%d_blocking_map_" % os.getpid(),
-            delete=False,
-            mode="w",
-            newline="",
-        ) as block_file:
-            csv_writer = csv.writer(block_file, dialect=csv.unix_dialect)
-            csv_writer.writerows(b_data)
-            return block_file.name
+        with write_con:
+            with write_con.cursor() as write_cur:
+                write_cur.copy_expert('COPY blocking_map FROM STDIN WITH CSV',
+                                      Readable(b_data),
+                                      size=10000)
 
 
 if __name__ == '__main__':
@@ -305,16 +304,6 @@ if __name__ == '__main__':
                 for partition_offset in partition_offsets
             ],
         )
-
-    # parallel_fingerprinter output are CSV files that we'll now copy into `blocking_map`
-    print('writing blocking map (non-index predicates)')
-
-    for blocking_file_path in block_file_path_list:
-        with write_con.cursor() as write_cur:
-            with open(blocking_file_path, "r", newline="") as f:
-                logging.info("Appending to blocking_map from %s" % blocking_file_path)
-                write_cur.copy_expert("COPY blocking_map FROM STDIN CSV", f, size=10000)
-        os.remove(blocking_file_path)
 
     # If dedupe learned a Index Predicate, we have to take a pass
     # through the data and create indices
