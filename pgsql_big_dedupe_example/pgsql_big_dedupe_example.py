@@ -338,124 +338,123 @@ if __name__ == '__main__':
         # free up memory by removing indices
         deduper.fingerprinter.reset_indices()
 
-    # logging.info("indexing block_key")
-    # with write_con:
-    #     with write_con.cursor() as cur:
-    #         cur.execute("CREATE UNIQUE INDEX ON blocking_map "
-    #                     "(block_key text_pattern_ops, donor_id)")
+    logging.info("indexing block_key")
+    with write_con:
+        with write_con.cursor() as cur:
+            cur.execute("CREATE UNIQUE INDEX ON blocking_map "
+                        "(block_key text_pattern_ops, donor_id)")
 
-    # # ## Clustering
+    # ## Clustering
 
-    # with write_con:
-    #     with write_con.cursor() as cur:
-    #         cur.execute("DROP TABLE IF EXISTS entity_map")
+    with write_con:
+        with write_con.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS entity_map")
 
-    #         print('creating entity_map database')
-    #         cur.execute("CREATE TABLE entity_map "
-    #                     "(donor_id INTEGER, canon_id INTEGER, "
-    #                     " cluster_score FLOAT, PRIMARY KEY(donor_id))")
+            print('creating entity_map database')
+            cur.execute("CREATE TABLE entity_map "
+                        "(donor_id INTEGER, canon_id INTEGER, "
+                        " cluster_score FLOAT, PRIMARY KEY(donor_id))")
 
-    # with read_con.cursor('pairs', cursor_factory=psycopg2.extensions.cursor) as read_cur:
-    #     read_cur.execute("""
-    #            select a.donor_id,
-    #                   row_to_json((select d from (select a.city,
-    #                                                      a.name,
-    #                                                      a.zip,
-    #                                                      a.state,
-    #                                                      a.address) d)),
-    #                   b.donor_id,
-    #                   row_to_json((select d from (select b.city,
-    #                                                      b.name,
-    #                                                      b.zip,
-    #                                                      b.state,
-    #                                                      b.address) d))
-    #            from (select DISTINCT l.donor_id as east, r.donor_id as west
-    #                  from blocking_map as l
-    #                  INNER JOIN blocking_map as r
-    #                  using (block_key)
-    #                  where l.donor_id < r.donor_id) ids
-    #            INNER JOIN processed_donors a on ids.east=a.donor_id
-    #            INNER JOIN processed_donors b on ids.west=b.donor_id""")
+    with read_con.cursor('pairs', cursor_factory=psycopg2.extensions.cursor) as read_cur:
+        read_cur.execute("""
+               select a.donor_id,
+                      row_to_json((select d from (select a.city,
+                                                         a.name,
+                                                         a.zip,
+                                                         a.state,
+                                                         a.address) d)),
+                      b.donor_id,
+                      row_to_json((select d from (select b.city,
+                                                         b.name,
+                                                         b.zip,
+                                                         b.state,
+                                                         b.address) d))
+               from (select DISTINCT l.donor_id as east, r.donor_id as west
+                     from blocking_map as l
+                     INNER JOIN blocking_map as r
+                     using (block_key)
+                     where l.donor_id < r.donor_id) ids
+               INNER JOIN processed_donors a on ids.east=a.donor_id
+               INNER JOIN processed_donors b on ids.west=b.donor_id""")
 
-    #     print('clustering...')
-    #     clustered_dupes = deduper.cluster(deduper.score(record_pairs(read_cur)),
-    #                                       threshold=0.5)
+        print('clustering...')
+        clustered_dupes = deduper.cluster(deduper.score(record_pairs(read_cur)),
+                                          threshold=0.5)
 
-    #     # ## Writing out results
+        # ## Writing out results
 
-    #     # We now have a sequence of tuples of donor ids that dedupe believes
-    #     # all refer to the same entity. We write this out onto an entity map
-    #     # table
+        # We now have a sequence of tuples of donor ids that dedupe believes
+        # all refer to the same entity. We write this out onto an entity map
+        # table
 
-    #     print('writing results')
-    #     with write_con:
-    #         with write_con.cursor() as write_cur:
-    #             write_cur.copy_expert('COPY entity_map FROM STDIN WITH CSV',
-    #                                   Readable(cluster_ids(clustered_dupes)),
-    #                                   size=10000)
+        print('writing results')
+        with write_con:
+            with write_con.cursor() as write_cur:
+                write_cur.copy_expert('COPY entity_map FROM STDIN WITH CSV',
+                                      Readable(cluster_ids(clustered_dupes)),
+                                      size=10000)
 
-    # with write_con:
-    #     with write_con.cursor() as cur:
-    #         cur.execute("CREATE INDEX head_index ON entity_map (canon_id)")
+    with write_con:
+        with write_con.cursor() as cur:
+            cur.execute("CREATE INDEX head_index ON entity_map (canon_id)")
 
-    # # Print out the number of duplicates found
+    # Print out the number of duplicates found
 
-    # # ## Payoff
+    # ## Payoff
 
-    # # With all this done, we can now begin to ask interesting questions
-    # # of the data
-    # #
-    # # For example, let's see who the top 10 donors are.
+    # With all this done, we can now begin to ask interesting questions
+    # of the data
+    #
+    # For example, let's see who the top 10 donors are.
 
-    # locale.setlocale(locale.LC_ALL, '')  # for pretty printing numbers
+    locale.setlocale(locale.LC_ALL, '')  # for pretty printing numbers
 
-    # # Create a temporary table so each group and unmatched record has
-    # # a unique id
+    # Create a temporary table so each group and unmatched record has
+    # a unique id
 
-    # with read_con.cursor() as cur:
-    #     cur.execute("CREATE TEMPORARY TABLE e_map "
-    #                 "AS SELECT COALESCE(canon_id, donor_id) AS canon_id, donor_id "
-    #                 "FROM entity_map "
-    #                 "RIGHT JOIN donors USING(donor_id)")
+    with read_con.cursor() as cur:
+        cur.execute("CREATE TEMPORARY TABLE e_map "
+                    "AS SELECT COALESCE(canon_id, donor_id) AS canon_id, donor_id "
+                    "FROM entity_map "
+                    "RIGHT JOIN donors USING(donor_id)")
 
-    #     cur.execute(
-    #         "SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) AS name, "
-    #         "donation_totals.totals AS totals "
-    #         "FROM donors INNER JOIN "
-    #         "(SELECT canon_id, SUM(CAST(amount AS FLOAT)) AS totals "
-    #         " FROM contributions INNER JOIN e_map "
-    #         " USING (donor_id) "
-    #         " GROUP BY (canon_id) "
-    #         " ORDER BY totals "
-    #         " DESC LIMIT 10) "
-    #         "AS donation_totals ON donors.donor_id=donation_totals.canon_id "
-    #         "WHERE donors.donor_id = donation_totals.canon_id"
-    #     )
+        cur.execute(
+            "SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) AS name, "
+            "donation_totals.totals AS totals "
+            "FROM donors INNER JOIN "
+            "(SELECT canon_id, SUM(CAST(amount AS FLOAT)) AS totals "
+            " FROM contributions INNER JOIN e_map "
+            " USING (donor_id) "
+            " GROUP BY (canon_id) "
+            " ORDER BY totals "
+            " DESC LIMIT 10) "
+            "AS donation_totals ON donors.donor_id=donation_totals.canon_id "
+            "WHERE donors.donor_id = donation_totals.canon_id"
+        )
 
-    #     print("Top Donors (deduped)")
-    #     for row in cur:
-    #         row['totals'] = locale.currency(row['totals'], grouping=True)
-    #         print('%(totals)20s: %(name)s' % row)
+        print("Top Donors (deduped)")
+        for row in cur:
+            row['totals'] = locale.currency(row['totals'], grouping=True)
+            print('%(totals)20s: %(name)s' % row)
 
-    #     # Compare this to what we would have gotten if we hadn't done any
-    #     # deduplication
-    #     cur.execute(
-    #         "SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) as name, "
-    #         "SUM(CAST(contributions.amount AS FLOAT)) AS totals "
-    #         "FROM donors INNER JOIN contributions "
-    #         "USING (donor_id) "
-    #         "GROUP BY (donor_id) "
-    #         "ORDER BY totals DESC "
-    #         "LIMIT 10"
-    #     )
+        # Compare this to what we would have gotten if we hadn't done any
+        # deduplication
+        cur.execute(
+            "SELECT CONCAT_WS(' ', donors.first_name, donors.last_name) as name, "
+            "SUM(CAST(contributions.amount AS FLOAT)) AS totals "
+            "FROM donors INNER JOIN contributions "
+            "USING (donor_id) "
+            "GROUP BY (donor_id) "
+            "ORDER BY totals DESC "
+            "LIMIT 10"
+        )
 
-    #     print("Top Donors (raw)")
-    #     for row in cur:
-    #         row['totals'] = locale.currency(row['totals'], grouping=True)
-    #         print('%(totals)20s: %(name)s' % row)
+        print("Top Donors (raw)")
+        for row in cur:
+            row['totals'] = locale.currency(row['totals'], grouping=True)
+            print('%(totals)20s: %(name)s' % row)
 
     read_con.close()
-    write_con.commit()
     write_con.close()
 
     print('ran in', time.time() - start_time, 'seconds')
