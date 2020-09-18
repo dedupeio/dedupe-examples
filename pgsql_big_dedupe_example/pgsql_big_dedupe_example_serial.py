@@ -24,8 +24,6 @@ import locale
 import itertools
 import io
 import csv
-import multiprocessing
-import math
 import tempfile
 
 import dj_database_url
@@ -47,16 +45,8 @@ class Readable(object):
 
     def __init__(self, iterator):
 
-        self.output = io.StringIO(
-            # necesary for csv. See: https://docs.python.org/3/library/csv.html#id3
-            newline='',
-        )
-        self.writer = csv.writer(
-            self.output,
-            # csv.unix_dialect seems the right one
-            # based on our tests and Postgres CSV defaults:
-            # https://www.postgresql.org/docs/12/sql-copy.html
-            dialect=csv.unix_dialect)
+        self.output = io.StringIO()
+        self.writer = csv.writer(self.output)
         self.iterator = iterator
 
     def read(self, size):
@@ -91,30 +81,6 @@ def cluster_ids(clustered_dupes):
             yield donor_id, cluster_id, score
 
 
-def parallel_fingerprinter(db_conf, deduper_fingerprinter, donor_partition_select, partition_offset, partition_end):
-    read_con = psycopg2.connect(database=db_conf['NAME'],
-                                user=db_conf['USER'],
-                                password=db_conf['PASSWORD'],
-                                host=db_conf['HOST'],
-                                cursor_factory=psycopg2.extras.RealDictCursor)
-
-    with read_con.cursor('donor_partition_select') as read_cur:
-        read_cur.execute(donor_partition_select, (partition_offset, partition_end))
-
-        partition_data = ((row['donor_id'], row) for row in read_cur)
-        b_data = deduper_fingerprinter(partition_data)
-
-        with tempfile.NamedTemporaryFile(
-            prefix="pid_%d_blocking_map_" % os.getpid(),
-            delete=False,
-            mode="w",
-            newline="",
-        ) as block_file:
-            csv_writer = csv.writer(block_file, dialect=csv.unix_dialect)
-            csv_writer.writerows(b_data)
-            return block_file.name
-
-
 if __name__ == '__main__':
     # ## Logging
 
@@ -137,7 +103,6 @@ if __name__ == '__main__':
     # ## Setup
     settings_file = 'pgsql_big_dedupe_example_settings'
     training_file = 'pgsql_big_dedupe_example_training.json'
-    num_cores = multiprocessing.cpu_count()
 
     start_time = time.time()
 
@@ -171,19 +136,14 @@ if __name__ == '__main__':
     # `pgsql_big_dedupe_example_init_db.py`
 
     DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address " \
-                   "FROM processed_donors"
-    DONOR_PARTITION_SELECT = "SELECT donor_id, city, name, zip, state, address " \
-                             "FROM processed_donors " \
-                             "WHERE donor_id >= %s " \
-                             "AND donor_id < %s"
-    COUNT_SELECT = "SELECT COUNT(*) FROM processed_donors"
+                   "from processed_donors"
 
     # ## Training
 
     if os.path.exists(settings_file):
         print('reading from ', settings_file)
         with open(settings_file, 'rb') as sf:
-            deduper = dedupe.StaticDedupe(sf, num_cores=num_cores)
+            deduper = dedupe.StaticDedupe(sf, num_cores=4)
     else:
 
         # Define the fields dedupe will pay attention to
@@ -200,7 +160,7 @@ if __name__ == '__main__':
                   ]
 
         # Create a new deduper object and pass our data model to it.
-        deduper = dedupe.Dedupe(fields, num_cores=num_cores)
+        deduper = dedupe.Dedupe(fields, num_cores=4)
 
         # Named cursor runs server side with psycopg2
         with read_con.cursor('donor_select') as cur:
@@ -254,105 +214,58 @@ if __name__ == '__main__':
 
     # To run blocking on such a large set of data, we create a separate table
     # that contains blocking keys and record ids
-    print('creating blocking_map database')
+    print('creating blocking_map_serial database')
     with write_con:
         with write_con.cursor() as cur:
-            cur.execute("DROP TABLE IF EXISTS blocking_map")
-            cur.execute("CREATE TABLE blocking_map "
+            cur.execute("DROP TABLE IF EXISTS blocking_map_serial")
+            cur.execute("CREATE TABLE blocking_map_serial "
                         "(block_key text, donor_id INTEGER)")
 
-    # Compute `(block_key, donor_id)` tuples and write on `blocking_map` in parallel,
-    # but only for the non-index predicates. Only those can run in parallel
-    # because they don't need global predicate indexes.
-    # We cannot share predicate indexes across Python processes because it would consume
-    # too much RAM
-    print('computing blocking map in parallel (non-index predicates)')
-
-    predicates_without_index = []
-    predicates_with_index = []
-    for full_predicate in deduper.fingerprinter.predicates:
-        if any(predicate in deduper.fingerprinter.index_predicates
-               for predicate in full_predicate):
-            predicates_with_index.append(full_predicate)
-        else:
-            predicates_without_index.append(full_predicate)
-
-    # Use only predicates WITHOUT indexes for parallel blocking
-    deduper.fingerprinter.predicates = predicates_without_index
-
-    # processed_donors `id` starts at 1 and goes up to `COUNT(*)`
-    with read_con.cursor('donor_select') as cur:
-        cur.execute(COUNT_SELECT)
-        total_rows = cur.fetchone()['count']
-    partition_size = math.ceil(total_rows / num_cores)
-    partition_offsets = range(1, total_rows + 1, partition_size)
-
-    # Use a multiprocessing.Pool to run parallel_fingerprinter in num_cores.
-    # Set context to 'spawn' to start new clean processes.
-    # 'spawn' is the defualt on Windows and macOS, but not on Unix
-    multiprocessing.set_start_method('spawn')
-    with multiprocessing.Pool(processes=num_cores) as pool:
-        block_file_path_list = pool.starmap(
-            parallel_fingerprinter,
-            [
-                (
-                    db_conf,
-                    deduper.fingerprinter,
-                    DONOR_PARTITION_SELECT,
-                    partition_offset,
-                    (partition_offset + partition_size)
-                )
-                for partition_offset in partition_offsets
-            ],
-        )
-
-    # parallel_fingerprinter output are CSV files that we'll now copy into `blocking_map`
-    print('writing blocking map (non-index predicates)')
-
-    for blocking_file_path in block_file_path_list:
-        with write_con.cursor() as write_cur:
-            with open(blocking_file_path, "r", newline="") as f:
-                logging.info("Appending to blocking_map from %s" % blocking_file_path)
-                write_cur.copy_expert("COPY blocking_map FROM STDIN CSV", f, size=10000)
-        os.remove(blocking_file_path)
-
     # If dedupe learned a Index Predicate, we have to take a pass
-    # through the data and create indices
-    if predicates_with_index:
-        print('creating inverted indexes')
+    # through the data and create indices.
+    print('creating inverted index')
 
-        # Use only predicates WITH indexes for non-parallel blocking
-        deduper.fingerprinter.predicates = predicates_with_index
+    for field in deduper.fingerprinter.index_fields:
+        with read_con.cursor('field_values') as cur:
+            cur.execute("SELECT DISTINCT %s FROM processed_donors" % field)
+            field_data = (row[field] for row in cur)
+            deduper.fingerprinter.index(field_data, field)
 
-        for field in deduper.fingerprinter.index_fields:
-            with read_con.cursor('field_values') as cur:
-                cur.execute("SELECT DISTINCT %s FROM processed_donors" % field)
-                field_data = (row[field] for row in cur)
-                deduper.fingerprinter.index(field_data, field)
+    # Now we are ready to write our blocking map table by creating a
+    # generator that yields unique `(block_key, donor_id)` tuples.
+    print('writing blocking map')
 
-        # Compute `(block_key, donor_id)` tuples and write on `blocking_map` in serial
-        # for the index predicates
-        print('computing and writing blocking map (index predicates)')
+    with read_con.cursor('donor_select') as read_cur:
+        read_cur.execute(DONOR_SELECT)
 
-        with read_con.cursor('donor_select') as read_cur:
-            read_cur.execute(DONOR_SELECT)
+        full_data = ((row['donor_id'], row) for row in read_cur)
+        b_data = deduper.fingerprinter(full_data)
 
-            full_data = ((row['donor_id'], row) for row in read_cur)
-            b_data = deduper.fingerprinter(full_data)
+        with write_con:
+            with write_con.cursor() as write_cur:
+                with tempfile.NamedTemporaryFile(
+                    prefix="blocking_map_",
+                    mode="w+",
+                    newline="",
+                ) as block_file:
+                    csv_writer = csv.writer(block_file, dialect=csv.unix_dialect)
+                    csv_writer.writerows(b_data)
+                    block_file.seek(0)
+                    write_cur.copy_expert("COPY blocking_map FROM STDIN CSV", block_file, size=10000)
 
-            with write_con:
-                with write_con.cursor() as write_cur:
-                    write_cur.copy_expert('COPY blocking_map FROM STDIN WITH CSV',
-                                          Readable(b_data),
-                                          size=10000)
+        # with write_con:
+        #     with write_con.cursor() as write_cur:
+        #         write_cur.copy_expert('COPY blocking_map_serial FROM STDIN WITH CSV',
+        #                               Readable(b_data),
+        #                               size=10000)
 
-        # free up memory by removing indices
-        deduper.fingerprinter.reset_indices()
+    # free up memory by removing indices
+    deduper.fingerprinter.reset_indices()
 
     # logging.info("indexing block_key")
     # with write_con:
     #     with write_con.cursor() as cur:
-    #         cur.execute("CREATE UNIQUE INDEX ON blocking_map "
+    #         cur.execute("CREATE UNIQUE INDEX ON blocking_map_serial "
     #                     "(block_key text_pattern_ops, donor_id)")
 
     # # ## Clustering
@@ -381,8 +294,8 @@ if __name__ == '__main__':
     #                                                      b.state,
     #                                                      b.address) d))
     #            from (select DISTINCT l.donor_id as east, r.donor_id as west
-    #                  from blocking_map as l
-    #                  INNER JOIN blocking_map as r
+    #                  from blocking_map_serial as l
+    #                  INNER JOIN blocking_map_serial as r
     #                  using (block_key)
     #                  where l.donor_id < r.donor_id) ids
     #            INNER JOIN processed_donors a on ids.east=a.donor_id
