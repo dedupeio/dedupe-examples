@@ -73,6 +73,7 @@ def is_s3_url(url):
         return urlparse(url).scheme in ["s3", "s3n", "s3a"]
     except Exception:
         return False
+    
 def seperate_bucket_key(url):
     m = re.match('s3://([^/]+)/(.*)', url)
     return m.group(1), m.group(2)
