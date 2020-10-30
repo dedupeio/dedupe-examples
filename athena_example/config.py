@@ -9,4 +9,5 @@ DATABASE = 'ria_tmp'
 
 # Database Parameters
 DATABASE_BUCKET = 'ria-temp'
-DATABASE_ROOT_KEY = 'as-dedupe/'
+DATABASE_ROOT_KEY = 'as_dedupe/'
+BUFFERSIZE = 100000

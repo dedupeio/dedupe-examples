@@ -25,7 +25,7 @@ import config
 import csv
 import sys
 sys.path.insert(0, '../athena_example/')
-import utils
+import athenautils
 
 
 contributions_zip_file = 'Illinois-campaign-contributions.txt.zip'
@@ -51,14 +51,14 @@ if not os.path.exists(contributions_txt_file) :
 
 
 print('importing raw data from csv...')
-utils.athena_start_query("DROP TABLE IF EXISTS as_raw_table")
-utils.athena_start_query("DROP TABLE IF EXISTS as_donors")
-utils.athena_start_query("DROP TABLE IF EXISTS as_recipients")
-utils.athena_start_query("DROP TABLE IF EXISTS as_contributions")
-utils.athena_start_query("DROP TABLE IF EXISTS as_processed_donors")
+athenautils.athena_start_query("DROP TABLE IF EXISTS as_raw_table", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS as_donors", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS as_recipients", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS as_contributions", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS as_processed_donors", database=config.DATABASE)
 
 
-q=r'''
+q=r"""
 CREATE EXTERNAL TABLE as_raw_table 
     (reciept_id INT, last_name VARCHAR(70), first_name VARCHAR(35), 
     address_1 VARCHAR(35), address_2 VARCHAR(36), city VARCHAR(20), 
@@ -83,8 +83,8 @@ TBLPROPERTIES (
     'classification'='csv', 
     'skip.header.line.count'='1',  
     'serialization.null.format'='')
-'''.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_raw_table') 
-utils.athena_start_query(q)
+""".format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_raw_table') 
+athenautils.athena_start_query(q, database=config.DATABASE)
 
 
 df = pd.read_csv(contributions_txt_file, sep='\t', escapechar='\\', quoting=csv.QUOTE_NONE,  
@@ -114,14 +114,14 @@ df = df.drop(columns='Unnamed: 29')
 # df = df.replace(r'^\s*$', np.nan, regex=True)
 df_lower=df.apply(lambda x: x.str.lower().str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8') if x.dtype=='object' else x, result_type='expand')
 
-utils.write(body=df_lower.to_csv(quoting=csv.QUOTE_NONE, sep="\t", escapechar='\\', index=None),
+athenautils.write(body=df_lower.to_csv(quoting=csv.QUOTE_NONE, sep="\t", escapechar='\\', index=None),
            filename=os.path.join("s3://", config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY,'as_raw_table', contributions_txt_file,))
 
 # Athena is doesn't equate empty string and null, eventhough in the table spec we said so
 # Not that it's a bug, it works if the string is null in the source, but not after applying trim to it
 # So we need to manually take care of that
 print('creating donors table...')
-q='''
+q="""
 CREATE TABLE as_donors as
     with tmp as
       (SELECT DISTINCT 
@@ -135,15 +135,15 @@ CREATE TABLE as_donors as
            NULLIF(TRIM(employer), '') as employer, 
            NULLIF(TRIM(occupation), '') as occupation
       FROM as_raw_table)
-    SELECT row_number() over () as donor_id, * from tmp'''
-utils.athena_start_query(q)
+    SELECT row_number() over () as donor_id, * from tmp"""
+athenautils.athena_start_query(q, database=config.DATABASE)
 
 
-q='''
+q="""
 CREATE TABLE as_recipients as
     SELECT DISTINCT committee_id as recipient_id, committee_name as name FROM as_raw_table
-'''
-utils.athena_start_query(q)
+"""
+athenautils.athena_start_query(q, database=config.DATABASE)
 
 print('creating contributions table')
 
@@ -163,7 +163,7 @@ print('creating contributions table')
 #           "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
 # --
 
-q='''
+q="""
 CREATE TABLE as_contributions as
     SELECT reciept_id as contribution_id, 
         donors.donor_id as donor_id , 
@@ -185,11 +185,11 @@ CREATE TABLE as_contributions as
         coalesce(donors.state, '') = coalesce(TRIM(as_raw_table.state), '') AND 
         coalesce(donors.employer, '') = coalesce(TRIM(as_raw_table.employer), '') AND 
         coalesce(donors.occupation , '')= coalesce(TRIM(as_raw_table.occupation), '') AND 
-        coalesce(donors.zip, '') = coalesce(TRIM(as_raw_table.zip), '')'''
+        coalesce(donors.zip, '') = coalesce(TRIM(as_raw_table.zip), '')"""
 
-utils.athena_start_query(q)
+athenautils.athena_start_query(q, database=config.DATABASE)
 
-q = '''
+q = """
 CREATE TABLE as_processed_donors AS  
     SELECT donor_id,  
      LOWER(city) AS city,  
@@ -206,8 +206,8 @@ CREATE TABLE as_processed_donors AS
      LOWER(occupation) AS occupation, 
      LOWER(employer) AS employer, 
      first_name is null AS person 
- FROM as_donors'''
-utils.athena_start_query(q)
+ FROM as_donors"""
+athenautils.athena_start_query(q, database=config.DATABASE)
 
 
 

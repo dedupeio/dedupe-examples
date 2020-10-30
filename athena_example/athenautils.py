@@ -27,13 +27,35 @@ s3 = boto3.client('s3', region_name=config.REGION,
 athena = boto3.client('athena', region_name=config.REGION, 
                       aws_access_key_id=config.ACCESS_KEY_ID, aws_secret_access_key=config.SECRET_ACCESS_KEY)
 
-def athena_to_panda(query, database=config.DATABASE, output_location=config.ATHENA_GARBAGE_PATH, region=config.REGION, workgroup=config.WORKGROUP, **kwargs):
-    query_execution_id = athena_start_query(query, database, output_location, region, workgroup, wait_until_finished=True)
+def cursor_execute(query, database=None, cursortype='dict', buffersize=config.BUFFERSIZE, 
+                   output_location=config.ATHENA_GARBAGE_PATH, region=config.REGION, workgroup=config.WORKGROUP, 
+                   **kwargs):
+    
+    kwargs['chunksize']=buffersize
+    df_cur = athena_to_panda(query, database=database, 
+                             output_location=output_location, region=region, workgroup=workgroup, 
+                             **kwargs)
+    for df in df_cur:
+        if cursortype == 'dict':
+            all_rows = df.where(pd.notnull(df), None).to_dict('records')
+        if cursortype == 'tuple':
+            all_rows = df.where(pd.notnull(df), None).itertuples(index=False, name=None)
+        for row in all_rows:
+            yield row
+            
+            
+def athena_to_panda(query, database=None, 
+                    output_location=config.ATHENA_GARBAGE_PATH, region=config.REGION, workgroup=config.WORKGROUP, 
+                    **kwargs):
+    query_execution_id = athena_start_query(query, database=database,
+                                            output_location=output_location, region=region, workgroup=workgroup,
+                                            wait_until_finished=True)
     df = pandas_read_csv(os.path.join(output_location, query_execution_id+'.csv'), **kwargs)
     return df
 
-
-def athena_start_query(query, database=config.DATABASE, output_location=config.ATHENA_GARBAGE_PATH, region=config.REGION, workgroup=config.WORKGROUP, wait_until_finished=True):
+def athena_start_query(query, database=None, 
+                       output_location=config.ATHENA_GARBAGE_PATH, region=config.REGION, workgroup=config.WORKGROUP, 
+                       wait_until_finished=True):
     query_execution_id = athena.start_query_execution(
         QueryString=query,
         QueryExecutionContext={
@@ -88,13 +110,12 @@ def list_all(path):
     return listdir(path)
     
 
-def pandas_read_csv(filepath_or_buffer, verbose=True, **kwargs):
+def pandas_read_csv(filepath_or_buffer, **kwargs):
     bucket, key = seperate_bucket_key(filepath_or_buffer)
     obj = s3.get_object(Bucket=bucket, Key=key)
     return pd.read_csv(SomethingIO(obj['Body'].read()),  **kwargs)
 
-def read(filename, verbose=True):
-    log ("Reading {}".format(filename), verbose=verbose)
+def read(filename):
     if is_s3_url(filename):
         bucket, key = seperate_bucket_key(filename)
         obj=s3.get_object(Bucket=bucket, Key=key)
@@ -107,7 +128,24 @@ def write(body, filename):
     s3.put_object(Bucket=bucket, Key=key, Body=body)
     return
         
-    
+
+def file_name_append(filename, append, ommitext):
+    filename_base, ext  = os.path.splitext(filename)
+    if ommitext: 
+        return '%s%s' % (filename_base, append)
+    return '%s%s%s' % (filename_base, append, ext)
+
+def write_many(read_cursor, filename, buffersize=config.BUFFERSIZE):
+    chunkcount=0
+    while True:
+        buffer_df = pd.DataFrame.from_records(read_cursor, nrows=buffersize)
+        if buffer_df.empty: 
+            break        
+        buffer = buffer_df.to_csv(index=False, header=False, sep='\t')
+        chunk_fname = file_name_append(filename, '_{}'.format(chunkcount), ommitext=False)
+        write(buffer, chunk_fname)
+        chunkcount += 1
+        
 def file_exists(filename):
     bucket, key = seperate_bucket_key(filename)
     try:
@@ -120,20 +158,4 @@ def file_exists(filename):
             raise
     else:
         return True
-    
-    
-def log(outstr, logfile_name=config.LOG_FILE, timestamped=True, verbose=True, quiet=False):
-    if verbose == False:
-        return
-    if timestamped:
-        outstr = "[%s]\t%s\n" % (str(datetime.datetime.now()) , outstr)
-    else:
-        outstr = "%s\n" % (outstr,)
 
-    with open(logfile_name, "a") as logfile:
-        logfile.write(outstr)
-
-    if not quiet:
-        sys.stdout.write(outstr);
-        sys.stdout.flush()
-# Print iterations progress
