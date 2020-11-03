@@ -51,7 +51,9 @@ if not os.path.exists(contributions_txt_file) :
 
 
 print('importing raw data from csv...')
-athenautils.athena_start_query("DROP TABLE IF EXISTS as_raw_table", database=config.DATABASE)
+athenautils.drop_external_table("as_raw_table", 
+                                location = 's3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_raw_table'),
+                                database=config.DATABASE)    
 athenautils.athena_start_query("DROP TABLE IF EXISTS as_donors", database=config.DATABASE)
 athenautils.athena_start_query("DROP TABLE IF EXISTS as_recipients", database=config.DATABASE)
 athenautils.athena_start_query("DROP TABLE IF EXISTS as_contributions", database=config.DATABASE)
@@ -87,39 +89,40 @@ TBLPROPERTIES (
 athenautils.athena_start_query(q, database=config.DATABASE)
 
 
-df = pd.read_csv(contributions_txt_file, sep='\t', escapechar='\\', quoting=csv.QUOTE_NONE,  
-                 error_bad_lines=False, warn_bad_lines=True, dtype=str, keep_default_na=False, na_values=[''])#,
+df_cursor = pd.read_csv(contributions_txt_file, sep='\t', escapechar='\\', quoting=csv.QUOTE_NONE,  
+                        error_bad_lines=False, warn_bad_lines=True, dtype=str, keep_default_na=False, na_values=[''],
+                        chunksize=config.BUFFERSIZE)
+chunkcount = 0
+filename=os.path.join("s3://", config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY,'as_raw_table', os.path.splitext(contributions_txt_file)[0]+'.csv')
+for df in df_cursor: 
+    # Remove the very few records that mess up the demo 
+    # (demo purposes only! Don't do something like this in production)
+    df = df[df['RcvDate'].str.len()>=10]
 
-# Remove the very few records that mess up the demo 
-# (demo purposes only! Don't do something like this in production)
-df = df[df['RcvDate'].str.len()>=10]
+    # set empty, non-zero, strings in date columns to null
+    df.loc[df['RptPdBegDate'].str.len()<10,'RptPdBegDate'] = np.nan
 
-# set empty, non-zero, strings in date columns to null
-df.loc[df['RptPdBegDate'].str.len()<10,'RptPdBegDate'] = np.nan
+    df.loc[df['RptPdEndDate'].str.len()<10,'RptPdEndDate'] = np.nan
 
-df.loc[df['RptPdEndDate'].str.len()<10,'RptPdEndDate'] = np.nan
+    #committee ID is requred. Remove the 2 rows that don't have it.
+    df = df[df['ID']!='']
 
-#committee ID is requred. Remove the 2 rows that don't have it.
-df = df[df['ID']!='']
+    # There's a record with a date stuck in the committee_id column, which causes
+    # problems when inserting into the contributions table below. Get rid of it this 
+    # way.
+    df = df[df['ID'].str.len() <=9]
 
-# There's a record with a date stuck in the committee_id column, which causes
-# problems when inserting into the contributions table below. Get rid of it this 
-# way.
-df = df[df['ID'].str.len() <=9]
+    # dropping the last columns
+    df = df.drop(columns='Unnamed: 29')
 
-# dropping the last columns
-df = df.drop(columns='Unnamed: 29')
-
-# Nullifying empty strings
-# df = df.replace(r'^\s*$', np.nan, regex=True)
-df_lower=df.apply(lambda x: x.str.lower().str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8') if x.dtype=='object' else x, result_type='expand')
-
-athenautils.write(body=df_lower.to_csv(quoting=csv.QUOTE_NONE, sep="\t", escapechar='\\', index=None),
-           filename=os.path.join("s3://", config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY,'as_raw_table', contributions_txt_file,))
-
-# Athena is doesn't equate empty string and null, eventhough in the table spec we said so
-# Not that it's a bug, it works if the string is null in the source, but not after applying trim to it
-# So we need to manually take care of that
+    df_lower=df.apply(lambda x: x.str.lower().str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8') if x.dtype=='object' else x, result_type='expand')
+    
+    buffer = df_lower.to_csv(quoting=csv.QUOTE_NONE, sep="\t", escapechar='\\', index=None)
+    
+    chunk_fname = athenautils.file_name_append(filename, '_{}'.format(chunkcount), ommitext=False)
+    athenautils.write(body=buffer, filename=chunk_fname)
+    chunkcount += 1    
+    
 print('creating donors table...')
 q="""
 CREATE TABLE as_donors as
@@ -146,22 +149,6 @@ CREATE TABLE as_recipients as
 athenautils.athena_start_query(q, database=config.DATABASE)
 
 print('creating contributions table')
-
-# --
-# c.execute("CREATE TABLE contributions "
-#           "(contribution_id INT, donor_id INT, recipient_id INT, "
-#           " report_type VARCHAR(24), date_recieved DATE, "
-#           " loan_amount VARCHAR(12), amount VARCHAR(23), "
-#           " receipt_type VARCHAR(23), "
-#           " vendor_last_name VARCHAR(70), "
-#           " vendor_first_name VARCHAR(20), "
-#           " vendor_address_1 VARCHAR(35), vendor_address_2 VARCHAR(31), "
-#           " vendor_city VARCHAR(20), vendor_state VARCHAR(10), "
-#           " vendor_zip VARCHAR(10), description VARCHAR(90), "
-#           " election_type VARCHAR(10), election_year VARCHAR(10), "
-#           " report_period_begin DATE, report_period_end DATE) "
-#           "CHARACTER SET utf8 COLLATE utf8_unicode_ci")
-# --
 
 q="""
 CREATE TABLE as_contributions as

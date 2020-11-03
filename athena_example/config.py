@@ -1,4 +1,5 @@
 LOG_FILE = 'log.txt'
+
 # Connection parameters
 ACCESS_KEY_ID = None
 SECRET_ACCESS_KEY = None

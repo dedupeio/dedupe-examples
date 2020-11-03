@@ -13,7 +13,7 @@ Once that's all done you can run the example:
 
 ```bash
 cd mysql_example
-python athena_init_db.py 
+python athena_init.py 
 python athena_example.py
 ```
 

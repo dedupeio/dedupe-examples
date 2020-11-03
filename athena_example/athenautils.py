@@ -27,7 +27,7 @@ s3 = boto3.client('s3', region_name=config.REGION,
 athena = boto3.client('athena', region_name=config.REGION, 
                       aws_access_key_id=config.ACCESS_KEY_ID, aws_secret_access_key=config.SECRET_ACCESS_KEY)
 
-def cursor_execute(query, database=None, cursortype='dict', buffersize=config.BUFFERSIZE, 
+def cursor_execute(query, database=None, cursortype='tuple', buffersize=1000000, 
                    output_location=config.ATHENA_GARBAGE_PATH, region=config.REGION, workgroup=config.WORKGROUP, 
                    **kwargs):
     
@@ -104,10 +104,36 @@ def list_all(path):
     if is_s3_url(path):
         bucket, key = seperate_bucket_key(path)
         objects = s3.list_objects_v2(Bucket=bucket, Prefix=key)
+        if not 'Contents' in objects:
+            return []
         return [key['Key'] for key in objects['Contents']]
     from os import listdir
     from os.path import isfile, join
+    if not os.path.exists(path):
+        return []
     return listdir(path)
+
+def del_all_files(path):
+    filelist = list_all(path)
+    if is_s3_url(path):
+        bucket, key = seperate_bucket_key(path)
+        for f in filelist:
+            s3.delete_object(Bucket=bucket, Key=f)    
+        return
+    filelist = [os.path.join(path, f) for f in filelist]
+    for f in filelist:
+        if os.path.isfile(f):
+            os.remove(f)
+        else:    
+            shutil.rmtree(f)  
+            
+def drop_external_table(tablename, location , database=None, 
+                        output_location=config.ATHENA_GARBAGE_PATH, region=config.REGION, workgroup=config.WORKGROUP):
+    athena_start_query('drop table if exists {}'.format(tablename), database=database, 
+                       output_location=output_location, region=region, workgroup=workgroup)
+    del_all_files(location)
+
+
     
 
 def pandas_read_csv(filepath_or_buffer, **kwargs):

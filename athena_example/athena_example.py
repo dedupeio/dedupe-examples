@@ -4,9 +4,6 @@
 # In[ ]:
 
 
-# %load ../mysql_example/mysql_example.py
-#!/usr/bin/python
-
 """
 This is an example of working with very large data. There are about
 700,000 unduplicated donors in this database of Illinois political
@@ -14,7 +11,7 @@ campaign contributions.
 
 With such a large set of input data, we cannot store all the comparisons
 we need to make in memory. Instead, we will read the pairs on demand
-from the MySQL database.
+from the Athena database.
 
 __Note:__ You will need to run `python mysql_init_db.py`
 before running this script. See the annotates source for
@@ -47,12 +44,23 @@ import dedupe.backport
 sys.path.insert(0, '../athena_example/')
 import config
 sys.path.insert(0, '../athena_example/')
-import utils
+import athenautils
 
-def as_pandas(query, **kwrgs):
-    df = utils.athena_to_panda(query, escapechar=None, keep_default_na=False, na_values=[''], **kwrgs)
-    return df.where(pd.notnull(df), None)
+def cursor_execute(query, database):
+    '''
+    The MySQL compatible Cursor
+    '''
+    return athenautils.cursor_execute(query, database=database, 
+                                      cursortype='tuple', buffersize=config.BUFFERSIZE,
+                                      escapechar=None, keep_default_na=False, na_values=[''])
 
+def dict_cursor_execute(query, database):
+    '''
+    The MySQL compatible DicCursor
+    '''
+    return athenautils.cursor_execute(query, database=database, 
+                                      cursortype='dict', buffersize=config.BUFFERSIZE,
+                                      escapechar=None, keep_default_na=False, na_values=[''])
 def record_pairs(result_set):
     for i, row in enumerate(result_set):
         a_record_id, a_record, b_record_id, b_record = row
@@ -75,7 +83,7 @@ def cluster_ids(clustered_dupes):
 
 if __name__ == '__main__':
 
-    # ## Logging
+    ## Logging
 
     # Dedupe uses Python logging to show or suppress verbose output. Added
     # for convenience.  To enable verbose output, run `python
@@ -113,7 +121,8 @@ if __name__ == '__main__':
 #
 # We did a fair amount of preprocessing of the fields in
 # `mysql_init_db.py`    
-DONOR_SELECT = "SELECT donor_id, city, name, zip, state, address "                "from processed_donors"
+DONOR_SELECT = """SELECT donor_id, city, name, zip, state, address
+                  from as_processed_donors"""
 
 # ## Training
 
@@ -139,13 +148,8 @@ else:
     deduper = dedupe.Dedupe(fields, num_cores=4)
 
     # We will sample pairs from the entire donor table for training
-#         with read_con.cursor() as cur:
-
-    # Armin: The problem is the donor_id, it's numpy's int64, should be converted to int! 
-    # But for that, astype doesn't work, and a loop on temp_d is slow, so for now let's just use str
-#         with conn.cursor(PandasCursor, schema_name=schema_name) as cursor:
-    temp_df = as_pandas(DONOR_SELECT)
-    temp_d = temp_df.to_dict('index')
+    cur = cur_execute(DONOR_SELECT)
+    temp_d = {i: row for i, row in enumerate(cur)}
         
 
     # If we have training data saved from a previous run of dedupe,
@@ -200,11 +204,13 @@ print('blocking...')
 
 # To run blocking on such a large set of data, we create a separate table
 # that contains blocking keys and record ids
-print('creating blocking_map database')
-utils.athena_start_query("DROP TABLE IF EXISTS blocking_map")
+print('creating as_blocking_map database')
+athenautils.drop_external_table("as_blocking_map", 
+                                location = 's3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_blocking_map'),
+                                database=config.DATABASE)
 
-q='''
-CREATE EXTERNAL TABLE blocking_map     
+q="""
+CREATE EXTERNAL TABLE as_blocking_map     
     (block_key VARCHAR(200), donor_id INTEGER)
 ROW FORMAT DELIMITED
   FIELDS TERMINATED BY '\t'
@@ -215,8 +221,8 @@ TBLPROPERTIES (
     'classification'='csv', 
     --'skip.header.line.count'='1',  
     'serialization.null.format'='')
-'''.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'blocking_map') 
-utils.athena_start_query(q)
+""".format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_blocking_map') 
+athenautils.athena_start_query(q, database=config.DATABASE)
 
 
 # In[ ]:
@@ -229,13 +235,12 @@ print('creating inverted index')
 # Armin: 
 # This never runs, index_fields is empty, possible bug?
 for field in deduper.fingerprinter.index_fields:
-    q = '''
-    SELECT DISTINCT {field} FROM processed_donors 
+    q = """
+    SELECT DISTINCT {field} FROM as_processed_donors
     WHERE {field} IS NOT NULL
-    '''.format(field=field)
-    cur_df = as_pandas(q)
-    # Do I need to cast it as a list?
-    field_data = cur_df[field]
+    """.format(field=field)
+    cur = cur_execute(q)
+    field_data = (row[field] for row in cur)
     deduper.fingerprinter.index(field_data, field)
  
 
@@ -247,16 +252,16 @@ for field in deduper.fingerprinter.index_fields:
 # generator that yields unique `(block_key, donor_id)` tuples.
 print('writing blocking map')
 
-
-read_cur_dict = as_pandas(DONOR_SELECT).to_dict('records')
-full_data = ((row['donor_id'], row) for row in read_cur_dict)
+read_cur  = dict_cursor_execute(DONOR_SELECT, database=config.DATABASE)
+full_data = ((row['donor_id'], row) for row in read_cur)
 
 
 # In[ ]:
 
 
 b_data = deduper.fingerprinter(full_data)
-buffer = pd.DataFrame.from_records(b_data).to_csv(index=False, header=False, sep='\t')    utils.s3.put_object(Bucket=config.DATABASE_BUCKET, Key=config.DATABASE_ROOT_KEY+'blocking_map/blocking.csv', Body=buffer)    
+athenautils.write_many(b_data, 
+                       filename='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_blocking_map/blocking.csv'))
 
 
 # In[ ]:
@@ -264,24 +269,24 @@ buffer = pd.DataFrame.from_records(b_data).to_csv(index=False, header=False, sep
 
 
     # select unique pairs to compare
-    q='''
-    SELECT a.donor_id,
-        json_format(CAST (MAP(ARRAY['city', 'name', 'zip', 'state', 'address'],
-                              ARRAY[ a.city, a.name, a.zip, a.state, a.address])
-                    AS JSON)),
-        b.donor_id,
-        json_format(CAST (MAP(ARRAY['city', 'name', 'zip', 'state', 'address'], 
-                  ARRAY[ b.city, b.name, b.zip, b.state, b.address])
-              AS JSON))
-    FROM (SELECT DISTINCT l.donor_id as east, r.donor_id as west
-         from blocking_map as l
-         INNER JOIN blocking_map as r
-         using (block_key)
-         where l.donor_id < r.donor_id) ids
-    INNER JOIN processed_donors a on ids.east=a.donor_id
-    INNER JOIN processed_donors b on ids.west=b.donor_id
-    '''
-    read_cur_dict=as_pandas(q).itertuples(index=False, name=None)
+    q="""
+        SELECT a.donor_id,
+            json_format(CAST (MAP(ARRAY['city', 'name', 'zip', 'state', 'address'],
+                                  ARRAY[ a.city, a.name, a.zip, a.state, a.address])
+                        AS JSON)),
+            b.donor_id,
+            json_format(CAST (MAP(ARRAY['city', 'name', 'zip', 'state', 'address'], 
+                      ARRAY[ b.city, b.name, b.zip, b.state, b.address])
+                  AS JSON))
+        FROM (SELECT DISTINCT l.donor_id as east, r.donor_id as west
+             from as_blocking_map as l
+             INNER JOIN as_blocking_map as r
+             using (block_key)
+             where l.donor_id < r.donor_id) ids
+        INNER JOIN as_processed_donors a on ids.east=a.donor_id
+        INNER JOIN as_processed_donors b on ids.west=b.donor_id
+       """
+    read_cur = cursor_execute(q, database=config.DATABASE)
 
 
 # In[ ]:
@@ -290,34 +295,37 @@ buffer = pd.DataFrame.from_records(b_data).to_csv(index=False, header=False, sep
 # ## Clustering
 
 print('clustering...')
-clustered_dupes = deduper.cluster(deduper.score(record_pairs(read_cur_dict)),
+clustered_dupes = deduper.cluster(deduper.score(record_pairs(read_cur)),
                                   threshold=0.5)
 
 
 # In[ ]:
 
 
-utils.athena_start_query("DROP TABLE IF EXISTS entity_map")
+#     athenautils.athena_start_query("DROP TABLE IF EXISTS as_entity_map", database=config.DATABASE)
+    athenautils.drop_external_table("as_entity_map", 
+                                    location='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_entity_map/'), 
+                                    database=config.DATABASE)
+    
+    print('creating as_entity_map database')
+    q="""
+    CREATE EXTERNAL TABLE as_entity_map     
+        (donor_id INTEGER, canon_id INTEGER, 
+         cluster_score FLOAT)
+    ROW FORMAT DELIMITED
+      FIELDS TERMINATED BY '\t'
+      LINES TERMINATED BY '\n'  
+    LOCATION
+        's3://{}/{}' 
+    TBLPROPERTIES (
+        'classification'='csv', 
+        --'skip.header.line.count'='1',  
+        'serialization.null.format'='')
+    """.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_entity_map') 
+    athenautils.athena_start_query(q, database=config.DATABASE) 
 
-print('creating entity_map database')
-q='''
-CREATE EXTERNAL TABLE entity_map     
-    (donor_id INTEGER, canon_id INTEGER, 
-     cluster_score FLOAT)
-ROW FORMAT DELIMITED
-  FIELDS TERMINATED BY '\t'
-  LINES TERMINATED BY '\n'  
-LOCATION
-    's3://{}/{}' 
-TBLPROPERTIES (
-    'classification'='csv', 
-    --'skip.header.line.count'='1',  
-    'serialization.null.format'='')
-'''.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'entity_map') 
-utils.athena_start_query(q) 
-
-buffer = pd.DataFrame.from_records(cluster_ids(clustered_dupes)).to_csv(index=False, header=False, sep='\t')
-utils.s3.put_object(Bucket=config.DATABASE_BUCKET, Key=config.DATABASE_ROOT_KEY+'entity_map/entity_map.csv', Body=buffer)    
+    athenautils.write_many(cluster_ids(clustered_dupes),
+                          filename='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_entity_map/entity_map.csv'))
 
 
 # In[ ]:
@@ -335,70 +343,65 @@ print('# duplicate sets')
 
 locale.setlocale(locale.LC_ALL, 'en_CA.UTF-8')  # for pretty printing numbers
 
-utils.athena_start_query("DROP TABLE IF EXISTS e_map")
-q = '''
-CREATE TABLE e_map as 
-    SELECT COALESCE(canon_id, entity_map.donor_id) AS canon_id, entity_map.donor_id 
-    FROM entity_map 
-        RIGHT JOIN donors USING(donor_id)
-'''
+athenautils.athena_start_query("DROP TABLE IF EXISTS as_e_map", database=config.DATABASE)
 
-utils.athena_start_query(q)
-q ='''
-SELECT array_join(filter(array[donors.first_name, donors.last_name], x-> x IS NOT NULL), ' ') AS name,   
-    donation_totals.totals AS totals 
-FROM donors INNER JOIN 
-    (SELECT canon_id, SUM(cast (amount as double)) AS totals 
-    FROM contributions INNER JOIN e_map 
-    USING (donor_id) 
-    GROUP BY (canon_id) 
-    ORDER BY totals 
-    DESC LIMIT 10) 
-    AS donation_totals 
-ON donors.donor_id = donation_totals.canon_id
-ORDER BY totals DESC
-'''
-cur_dict = as_pandas(q).to_dict('records')
+q = """
+    CREATE TABLE as_e_map as 
+    SELECT COALESCE(canon_id, as_entity_map.donor_id) AS canon_id, as_entity_map.donor_id 
+    FROM as_entity_map 
+    RIGHT JOIN as_donors USING(donor_id)        
+    """    
+athenautils.athena_start_query(q, database=config.DATABASE)
+
+q = """
+    SELECT array_join(filter(array[as_donors.first_name, as_donors.last_name], x-> x IS NOT NULL), ' ') AS name,   
+        donation_totals.totals AS totals 
+    FROM as_donors INNER JOIN 
+        (SELECT canon_id, SUM(cast (amount as double)) AS totals 
+        FROM as_contributions INNER JOIN as_e_map 
+        USING (donor_id) 
+        GROUP BY (canon_id) 
+        ORDER BY totals 
+        DESC LIMIT 10) 
+        AS donation_totals 
+    ON as_donors.donor_id = donation_totals.canon_id
+    ORDER BY totals DESC
+"""
+cur = dict_cursor_execute(q, database=config.DATABASE)
 
 print("Top Donors (deduped)")
-for row in cur_dict:
+for row in cur:
     row['totals'] = locale.currency(row['totals'], grouping=True)
     print('%(totals)20s: %(name)s' % row)
 
 # Compare this to what we would have gotten if we hadn't done any
 # deduplication
+q = """
+    with donorscontributions as(
 
-q = '''
-with donorscontributions as(
-
-    SELECT donors.donor_id, 
-        array_join(filter(array[donors.first_name, donors.last_name], x-> x IS NOT NULL), ' ') AS name,
-        cast(contributions.amount as double) as amount
-    FROM donors INNER JOIN contributions 
-        USING (donor_id) 
-)
-SELECT name, sum(amount) AS totals  
-FROM donorscontributions
-GROUP BY donor_id, name
-ORDER BY totals DESC 
-LIMIT 10
-'''
-
-cur_dict = as_pandas(q).to_dict('records')
+        SELECT as_donors.donor_id, 
+            array_join(filter(array[as_donors.first_name, as_donors.last_name], x-> x IS NOT NULL), ' ') AS name,
+            cast(as_contributions.amount as double) as amount
+        FROM as_donors INNER JOIN as_contributions 
+            USING (donor_id) 
+        )
+    SELECT name, sum(amount) AS totals  
+    FROM donorscontributions
+    GROUP BY donor_id, name
+    ORDER BY totals DESC 
+    LIMIT 10
+"""
+cur = dict_cursor_execute(q, database=config.DATABASE)
 
 print("Top Donors (raw)")
-for row in cur_dict:
+for row in cur:
     row['totals'] = locale.currency(row['totals'], grouping=True)
     print('%(totals)20s: %(name)s' % row)
-
-# Close our database connection
-#     read_con.close()
-#     write_con.close()
 
 print('ran in', time.time() - start_time, 'seconds')
 
 
-# In[9]:
+# In[ ]:
 
 
 get_ipython().system('jupyter nbconvert --to script athena_example.ipynb --output-dir=../athena_example/')
