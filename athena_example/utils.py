@@ -89,18 +89,17 @@ def list_all(path):
     
 
 def pandas_read_csv(filepath_or_buffer, verbose=True, **kwargs):
-    bucket, key = seperate_bucket_key(filepath_or_buffer)
-    obj = s3.get_object(Bucket=bucket, Key=key)
-    return pd.read_csv(SomethingIO(obj['Body'].read()),  **kwargs)
+    return pd.read_csv(filepath_or_buffer, **kwargs)
 
-def read(filename, verbose=True):
+def reader(filename, Range='string', verbose=True):
+    '''
+        Range: look at: https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.35
+    '''
     log ("Reading {}".format(filename), verbose=verbose)
     if is_s3_url(filename):
         bucket, key = seperate_bucket_key(filename)
-        obj=s3.get_object(Bucket=bucket, Key=key)
-        return obj['Body'].read()
-    with open (filename) as f:
-        return f.read()
+        obj=s3.get_object(Bucket=bucket, Key=key, Range=Range)
+        return obj['Body']
 
 def write(body, filename):
     bucket, key = seperate_bucket_key(filename)
