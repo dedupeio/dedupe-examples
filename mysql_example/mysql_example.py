@@ -34,10 +34,16 @@ import dedupe.backport
 
 
 def record_pairs(result_set):
+    def safe(d):
+        return {
+            k: None if v is None or (type(v) == str and len(v) == 0) else v
+            for (k, v) in d.items()
+        }
+
     for i, row in enumerate(result_set):
         a_record_id, a_record, b_record_id, b_record = row
-        record_a = (a_record_id, json.loads(a_record))
-        record_b = (b_record_id, json.loads(b_record))
+        record_a = (a_record_id, safe(json.loads(a_record)))
+        record_b = (b_record_id, safe(json.loads(b_record)))
 
         yield record_a, record_b
 
