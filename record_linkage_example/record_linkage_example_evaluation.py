@@ -41,6 +41,9 @@ def linkPairs(filename, rowname) :
 
 clusters = 'data_matching_output.csv'
 
+scriptpath = os.path.dirname(__file__)
+clusters = os.path.join(scriptpath, clusters)
+
 true_dupes = linkPairs(clusters, 'unique_id')
 test_dupes = linkPairs(clusters, 'Cluster ID')
 

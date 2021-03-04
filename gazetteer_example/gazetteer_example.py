@@ -84,6 +84,11 @@ if __name__ == '__main__':
     settings_file = 'gazetteer_learned_settings'
     training_file = 'gazetteer_training.json'
 
+    scriptpath = os.path.dirname(__file__)
+    output_file = os.path.join(scriptpath, output_file)
+    settings_file = os.path.join(scriptpath, settings_file)
+    training_file = os.path.join(scriptpath, training_file)
+
     canon_file = os.path.join('data', 'AbtBuy_Buy.csv')
     messy_file = os.path.join('data', 'AbtBuy_Abt.csv')
 

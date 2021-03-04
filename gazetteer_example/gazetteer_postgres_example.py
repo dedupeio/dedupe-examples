@@ -172,6 +172,10 @@ if __name__ == '__main__':
     canon_file = os.path.join('data', 'AbtBuy_Buy.csv')
     messy_file = os.path.join('data', 'AbtBuy_Abt.csv')
 
+    scriptpath = os.path.dirname(__file__)
+    canon_file = os.path.join(scriptpath, canon_file)
+    messy_file = os.path.join(scriptpath, messy_file)
+
     print('Importing raw data into the database')
     canonical = readData(canon_file)
     messy = readData(messy_file)

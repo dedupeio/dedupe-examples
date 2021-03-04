@@ -85,6 +85,13 @@ if __name__ == '__main__':
     left_file = 'AbtBuy_Abt.csv'
     right_file = 'AbtBuy_Buy.csv'
 
+    scriptpath = os.path.dirname(__file__)
+    output_file = os.path.join(scriptpath, output_file)
+    settings_file = os.path.join(scriptpath, settings_file)
+    training_file = os.path.join(scriptpath, training_file)
+    left_file = os.path.join(scriptpath, left_file)
+    right_file = os.path.join(scriptpath, right_file)
+
     print('importing data ...')
     data_1 = readData(left_file)
     data_2 = readData(right_file)

@@ -1,5 +1,6 @@
 from future.utils import viewitems
 
+import os
 import csv
 import collections
 import itertools
@@ -40,6 +41,10 @@ def dupePairs(filename, rowname) :
 
 manual_clusters = 'csv_example_input_with_true_ids.csv'
 dedupe_clusters = 'csv_example_output.csv'
+
+scriptpath = os.path.dirname(__file__)
+manual_clusters = os.path.join(scriptpath, manual_clusters)
+dedupe_clusters = os.path.join(scriptpath, dedupe_clusters)
 
 true_dupes = dupePairs(manual_clusters, 'True Id')
 test_dupes = dupePairs(dedupe_clusters, 'Cluster ID')

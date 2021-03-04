@@ -1,6 +1,7 @@
 import csv
 import collections
 import itertools
+import os
 
 def evaluateDuplicates(found_dupes, true_dupes):
     true_positives = found_dupes.intersection(true_dupes)
@@ -40,6 +41,10 @@ def dupePairs(filename, colname) :
 
 dedupe_clusters = 'patstat_output.csv'
 manual_clusters = 'patstat_reference.csv'
+
+scriptpath = os.path.dirname(__file__)
+dedupe_clusters = os.path.join(scriptpath, dedupe_clusters)
+manual_clusters = os.path.join(scriptpath, manual_clusters)
 
 test_dupes = dupePairs(dedupe_clusters, 'Cluster ID')
 true_dupes = dupePairs(manual_clusters, 'leuven_id')
