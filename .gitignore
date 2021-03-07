@@ -28,3 +28,4 @@ pgsql_example/pgsql_init_db.py
 .idea
 /.vs/dedupe-examples/v16/.suo
 /.vs/slnx.sqlite
+/dedupe-examples.pyproj.user
