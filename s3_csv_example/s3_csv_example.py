@@ -81,7 +81,8 @@ if __name__ == '__main__':
     # ## Setup
 
     input_file = 's3_csv_example_messy_input.csv'
-    output_file = 'output/s3_csv_example_output.csv'
+    output_file = 's3_csv_example_output.csv'
+    s3output_file = 'output/s3_csv_example_output.csv'
     settings_file = 's3_csv_example_learned_settings'
     training_file = 's3_csv_example_training.json'
 
@@ -106,13 +107,14 @@ if __name__ == '__main__':
         filename = o.get('Key');
         print(filename)
         data = s3_client.get_object(Bucket=bucket, Key=filename)
-        if filename[:6] == 'input/':
+        if filename[:6] == 'input/' and len(filename) > 6:
             input_file = filename
-            s3_client.download_file(bucket,filename,filename)
-            s3files.append(filename)
-            response = s3_client.delete_object(
-                Bucket=bucket,
-                Key=filename)
+            local_file = filename[6:]
+            s3_client.download_file(bucket,filename,local_file)
+            s3files.append(local_file)
+            #response = s3_client.delete_object(
+            #    Bucket=bucket,
+            #    Key=filename)
 
     print('importing data ...')
     data_d = {}
@@ -198,8 +200,8 @@ if __name__ == '__main__':
                 "Cluster ID": cluster_id,
                 "confidence_score": score
             }
-
-    with open(output_file, 'w') as f_output, open(input_file) as f_input:
+#TODO - Local_File is wrong - need to process each input file
+    with open(output_file, 'w') as f_output, open(local_file) as f_input:
 
         reader = csv.DictReader(f_input)
         fieldnames = ['Cluster ID', 'confidence_score'] + reader.fieldnames
@@ -212,6 +214,6 @@ if __name__ == '__main__':
             row.update(cluster_membership[row_id])
             writer.writerow(row)
     s3 = boto3.resource('s3')
-    s3.meta.client.upload_file(output_file, output_bucket, output_file)
+    s3.meta.client.upload_file(output_file, output_bucket, s3output_file)
     os.remove(output_file)
 
