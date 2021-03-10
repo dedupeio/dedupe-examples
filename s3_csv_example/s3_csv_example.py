@@ -81,7 +81,7 @@ if __name__ == '__main__':
     # ## Setup
 
     input_file = 's3_csv_example_messy_input.csv'
-    output_file = 's3_csv_example_output.csv'
+    output_file = 'output/s3_csv_example_output.csv'
     settings_file = 's3_csv_example_learned_settings'
     training_file = 's3_csv_example_training.json'
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         filename = o.get('Key');
         print(filename)
         data = s3_client.get_object(Bucket=bucket, Key=filename)
-        if filename[:2] == 's3':
+        if filename[:6] == 'input/':
             input_file = filename
             s3_client.download_file(bucket,filename,filename)
             s3files.append(filename)
