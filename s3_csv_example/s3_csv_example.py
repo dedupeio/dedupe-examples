@@ -79,10 +79,12 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(log_level)
 
     # ## Setup
+    import time
+    timestr = time.strftime(".%Y.%m.%d-%H.%M.%S")
 
     input_file = 's3_csv_example_messy_input.csv'
-    output_file = 's3_csv_example_output.csv'
-    s3output_file = 'output/s3_csv_example_output.csv'
+    output_file = 's3_csv_example_output' + timestr + '.csv'
+    s3output_file = 'output/s3_csv_example_output' + timestr + '.csv'
     settings_file = 's3_csv_example_learned_settings'
     training_file = 's3_csv_example_training.json'
 
@@ -97,7 +99,8 @@ if __name__ == '__main__':
         bucket = sys.argv[1]
     if len(sys.argv) > 1:
         output_bucket = sys.argv[2]
-    
+    #bucket='c4kc-cvax-deduplication'
+    #output_bucket=bucket
     s3files = []
 
     import boto3
@@ -105,16 +108,17 @@ if __name__ == '__main__':
     result = s3_client.list_objects(Bucket = bucket, Prefix='')
     for o in result.get('Contents'):
         filename = o.get('Key');
-        print(filename)
-        data = s3_client.get_object(Bucket=bucket, Key=filename)
-        if filename[:6] == 'input/' and len(filename) > 6:
-            input_file = filename
-            local_file = filename[6:]
-            s3_client.download_file(bucket,filename,local_file)
-            s3files.append(local_file)
-            #response = s3_client.delete_object(
-            #    Bucket=bucket,
-            #    Key=filename)
+        if filename[:7] != 'output/':
+            print(filename)
+            data = s3_client.get_object(Bucket=bucket, Key=filename)
+            if filename[:6] == 'input/' and len(filename) > 6:
+                input_file = filename
+                local_file = filename[6:]
+                s3_client.download_file(bucket,filename,local_file)
+                s3files.append(local_file)
+                #response = s3_client.delete_object(
+                #    Bucket=bucket,
+                #    Key=filename)
 
     print('importing data ...')
     data_d = {}
@@ -216,4 +220,6 @@ if __name__ == '__main__':
     s3 = boto3.resource('s3')
     s3.meta.client.upload_file(output_file, output_bucket, s3output_file)
     os.remove(output_file)
+
+    #C:\Users\Administrator\AppData\Local\Programs\Python\Python39\python s3_csv_example.py c4kc-cvax-deduplication c4kc-cvax-deduplication
 
