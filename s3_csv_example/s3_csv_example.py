@@ -116,9 +116,9 @@ if __name__ == '__main__':
                 local_file = filename[6:]
                 s3_client.download_file(bucket,filename,local_file)
                 s3files.append(local_file)
-                #response = s3_client.delete_object(
-                #    Bucket=bucket,
-                #    Key=filename)
+                response = s3_client.delete_object(
+                    Bucket=bucket,
+                    Key=filename)
 
     print('importing data ...')
     data_d = {}
