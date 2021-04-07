@@ -30,6 +30,18 @@ def preProcess(column):
         column = None
     return column
 
+def readMappings(filename):
+
+
+    data_d = {}
+    with open(mappings_file) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            fldSource = str(row['Source'])
+            clean_row = [(k, preProcess(v)) for (k, v) in row.items()]
+            data_d[fldSource] = dict(clean_row)
+
+    return data_d
 
 def readData(filename):
     """
@@ -74,6 +86,7 @@ if __name__ == '__main__':
             log_level = logging.DEBUG
     logging.getLogger().setLevel(log_level)
 
+
     # ## Setup
     import time
     timestr = time.strftime(".%Y.%m.%d-%H.%M.%S")
@@ -95,10 +108,15 @@ if __name__ == '__main__':
         training_file = 'reals3_csv_example_training.json'
         fieldNameIdCol = fieldNameIdInSource
 
+    mappings_file = 'Mappings.csv'
     scriptpath = os.path.dirname(__file__)
     #output_file = os.path.join(scriptpath, output_file)
     settings_file = os.path.join(scriptpath, settings_file)
     training_file = os.path.join(scriptpath, training_file)
+    mappings_file = os.path.join(scriptpath, mappings_file)
+
+    header_map = {}
+    header_map.update(readMappings(mappings_file))
 
     import sys
     if len(sys.argv) > 1:
@@ -126,10 +144,10 @@ if __name__ == '__main__':
      #               response = s3_client.delete_object(
      #                   Bucket=bucket,
      #                   Key=filename)
-        csv_header = 'Id,Source,Site name,Address,Zip,Phone,Fax,Program Name,Length of Day,IDHS Provider ID,Agency,Neighborhood,Funded Enrollment,Program Option,Number per Site EHS,Number per Site HS,Director,Head Start Fund,Eearly Head Start Fund,CC fund,Progmod,Website,Executive Director,Center Director,ECE Available Programs,NAEYC Valid Until,NAEYC Program Id,Email Address,Ounce of Prevention Description,Purple binder service type,Column,Column2'
+        #csv_header = 'Id,Source,Site name,Address,Zip,Phone,Fax,Program Name,Length of Day,IDHS Provider ID,Agency,Neighborhood,Funded Enrollment,Program Option,Number per Site EHS,Number per Site HS,Director,Head Start Fund,Eearly Head Start Fund,CC fund,Progmod,Website,Executive Director,Center Director,ECE Available Programs,NAEYC Valid Until,NAEYC Program Id,Email Address,Ounce of Prevention Description,Purple binder service type,Column,Column2'
     else: #FileSource = "comebackkc1"
         s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323.csv')
-        csv_header = 'Receipt Number,Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,What is your zip code?,First Name,Last Name,Street Address,City,"Phone number (please enter numbers only, no dashes, spaces, or parentheses)",Email address,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
+        #csv_header = 'Receipt Number,Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,What is your zip code?,First Name,Last Name,Street Address,City,"Phone number (please enter numbers only, no dashes, spaces, or parentheses)",Email address,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
 #new stuff here
     csv_out = 'C:/Users/robkr/Source/Repos/dedupe-examples/s3_csv_example/combinedfile.csv'
 
@@ -137,6 +155,7 @@ if __name__ == '__main__':
     count = -1
     csv_merge = open(csv_out, 'w')
     #replacing Receipt Number with IDinSource in this file!!!
+    #TODO - Read in Headers and do a replace of header names based on the mappings.
     csv_headerNew = fieldNameIdInSource + ',Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,Zip,FirstName,LastName,Street Address,City,"Phone",Email,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
     csv_merge.write(fieldNameFileName + ',' + fieldNameFileNo + ',' + csv_headerNew)
     csv_merge.write('\n')
