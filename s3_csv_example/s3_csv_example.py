@@ -31,7 +31,7 @@ def preProcess(column):
     return column
 
 
-def readData(filename, idcol):
+def readData(filename):
     """
     Read in our data from a CSV file and create a dictionary of records,
     where the key is a unique record ID and each value is dict
@@ -42,7 +42,7 @@ def readData(filename, idcol):
         reader = csv.DictReader(f)
         for row in reader:
             clean_row = [(k, preProcess(v)) for (k, v) in row.items()]
-            row_id = str(int(row['FileNo'])) + '.' + str(int(row[idcol]))
+            row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
             data_d[row_id] = dict(clean_row)
 
     return data_d
@@ -77,18 +77,23 @@ if __name__ == '__main__':
     # ## Setup
     import time
     timestr = time.strftime(".%Y.%m.%d-%H.%M.%S")
-
+    
+    fieldNameFileNo = 'FileNo' #not dynamic - we totally control this
+    fieldNameFileName = 'FileName' #not dynamic - we totally control this
+    fieldNameIdInSource = 'IdInSource' #not dynamic - we totally control this
+    fieldNameClusterId = 'ClusterId' #not dynamic - we totally control this 
+    fieldNameConfidence = 'ConfidenceScore' #not dynamic - we totally control this 
     FileSource = "comebackkc1"
     output_file = 's3_csv_example_output' + timestr + '.csv'
     s3output_file = 'output/s3_csv_example_output' + timestr + '.csv'
     if FileSource == "dedupesample":
         settings_file = 's3_csv_example_learned_settings'
         training_file = 's3_csv_example_training.json'
-        idcol = 'Id'
+        fieldNameIdCol = 'Id'
     else: #FileSource = "comebackkc1"
         settings_file = 'reals3_csv_example_learned_settings'
         training_file = 'reals3_csv_example_training.json'
-        idcol = 'Receipt Number'
+        fieldNameIdCol = fieldNameIdInSource
 
     scriptpath = os.path.dirname(__file__)
     #output_file = os.path.join(scriptpath, output_file)
@@ -128,52 +133,28 @@ if __name__ == '__main__':
 #new stuff here
     csv_out = 'C:/Users/robkr/Source/Repos/dedupe-examples/s3_csv_example/combinedfile.csv'
 
-
-
-    fileno = 1
+    fileno = 1 #Used to make the key independent per record when we combine multiple input files
     count = -1
     csv_merge = open(csv_out, 'w')
-    csv_headerNew = 'Receipt Number,Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,Zip,FirstName,LastName,Street Address,City,"Phone",Email,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
-    csv_merge.write('FileNo,' + csv_headerNew)
+    #replacing Receipt Number with IDinSource in this file!!!
+    csv_headerNew = fieldNameIdInSource + ',Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,Zip,FirstName,LastName,Street Address,City,"Phone",Email,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
+    csv_merge.write(fieldNameFileName + ',' + fieldNameFileNo + ',' + csv_headerNew)
     csv_merge.write('\n')
     for file in s3files:
+        firstpos=file.rfind("/")
+        lastpos=len(file)
+        filenameonly = file[firstpos+1:lastpos]
         csv_in = open(file,"r",encoding='utf-8') #https://stackoverflow.com/questions/49562499/how-to-fix-unicodedecodeerror-charmap-codec-cant-decode-byte-0x9d-in-posit
         for line in csv_in:
             if count < 1: #line.startswith(csv_header):
                 count = count + 1
                 continue
-            csv_merge.write(str(fileno) + ',' + line)
+            csv_merge.write(filenameonly + ',' + str(fileno) + ',' + line)
             print(count)
             count = count + 1
         csv_in.close()
         fileno = fileno + 1
     csv_merge.close()
-
-    #'Email','Zip','FirstName','LastName','City','Phone'
-
-        #fields = [
-        #        {'field': 'Email address', 'type': 'Exact', 'has missing': True},
-        #        {'field': 'What is your zip code?', 'type': 'String'},
-        #        {'field': 'First Name', 'type': 'String'},
-        #        {'field': 'Last Name', 'type': 'String'},
-        #        {'field': 'City', 'type': 'String'},
-        #        {'field': 'What is your zip code?', 'type': 'Exact', 'has missing': True},
-        #        {'field': 'Phone number (please enter numbers only, no dashes, spaces, or parentheses)', 'type': 'String', 'has missing': True},
-        #        ]
-    #with open(output_file, 'w') as f_output, open(csv_out) as f_input:
-
-    #    newcols = []
-    #    reader = csv.DictReader(f_input)
-    #    for colname in reader.fieldnames:
-    #        colname = str.replace(colname,"First Name","FirstName")
-    #        colname = str.replace(colname,"Last Name","LastName")
-    #        colname = str.replace(colname,"Email address","Email")
-    #        colname = str.replace(colname,"Phone number (please enter numbers only, no dashes, spaces, or parentheses)","Phone")
-    #        colname = str.replace(colname,"What is your zip code?","Zip")
-    #        newcols.append(colname)
-
-        #writer = csv.DictWriter(f_output, fieldnames=newcols)
-        #writer.writeheader()
 
 
     #results = pd.DataFrame([])
@@ -184,7 +165,7 @@ if __name__ == '__main__':
 
     print('importing data ...')
     data_d = {}
-    data_d.update(readData(csv_out, idcol))
+    data_d.update(readData(csv_out))
 #    for eachFile in s3files:
  #       data_d.update(readData(eachFile, idcol))
 
@@ -192,7 +173,13 @@ if __name__ == '__main__':
         print('no files found to process in s3 bucket named: ' + bucket)
         os._exit(1)
 
-    # If a settings file already exists, we'll just load that and skip training
+    fieldNameSourceFileUniqueId=''
+    if FileSource == "dedupesample":
+        outputfieldnames = reader.fieldnames
+    else: #FileSource = "comebackkc1"
+        fieldNameSourceFileUniqueId = 'Response Reference ID' #this is probably different for each file - a GUID in some cases
+        outputfieldnames = [fieldNameFileName,fieldNameFileNo,fieldNameIdInSource,fieldNameSourceFileUniqueId,'FirstName', 'LastName','Email','City','Phone','Zip']
+        # If a settings file already exists, we'll just load that and skip training
     if os.path.exists(settings_file):
         print('reading from', settings_file)
         with open(settings_file, 'rb') as f:
@@ -218,6 +205,7 @@ if __name__ == '__main__':
                 {'field': 'Zip', 'type': 'Exact', 'has missing': True},
                 {'field': 'Phone', 'type': 'String', 'has missing': True},
                 ]
+
         # Create a new deduper object and pass our data model to it.
         deduper = dedupe.Dedupe(fields)
 
@@ -274,22 +262,28 @@ if __name__ == '__main__':
     for cluster_id, (records, scores) in enumerate(clustered_dupes):
         for record_id, score in zip(records, scores):
             cluster_membership[record_id] = {
-                "Cluster ID": cluster_id,
-                "confidence_score": score
+                fieldNameClusterId: cluster_id,
+                fieldNameConfidence: score
             }
 
     with open(output_file, 'w') as f_output, open(csv_out) as f_input:
 
         reader = csv.DictReader(f_input)
-        fieldnames = ['Cluster ID', 'confidence_score'] + reader.fieldnames
-
+        fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
         writer = csv.DictWriter(f_output, fieldnames=fieldnames)
         writer.writeheader()
 
         for row in reader:
-            row_id = str(int(row['FileNo'])) + '.' + str(int(row[idcol]))
+            row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
             row.update(cluster_membership[row_id])
-            writer.writerow(row)
+            
+            newrow = {fieldNameFileName: row[fieldNameFileName], fieldNameFileNo: row[fieldNameFileNo],
+                     fieldNameIdInSource: row[fieldNameIdInSource], fieldNameSourceFileUniqueId:row[fieldNameSourceFileUniqueId],
+                    'FirstName': row['FirstName'], 'LastName': row['LastName']
+                     , 'City': row['City'], 'Zip': row['Zip']
+                     , 'Phone': row['Phone'], 'Email': row['Email']
+                     , fieldNameClusterId: row[fieldNameClusterId], fieldNameConfidence: row[fieldNameConfidence]}
+            writer.writerow(newrow)
     writeToS3Bucket(output_file, output_bucket, s3output_file)
 
     #C:\Users\Administrator\AppData\Local\Programs\Python\Python39\python s3_csv_example.py c4kc-cvax-deduplication c4kc-cvax-deduplication
