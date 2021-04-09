@@ -213,7 +213,7 @@ if __name__ == '__main__':
     #replacing Receipt Number with IDinSource in this file!!!
     #TODO - Read in Headers and do a replace of header names based on the mappings.
     #csv_headerNew = fieldNameIdInSource + ',Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,Zip,FirstName,LastName,Street Address,City,"Phone",Email,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
-    csv_headerNew = 'FirstName,LastName,Email,City,Phone,Zip,Unique ID,Key'
+    csv_headerNew = 'FirstName,LastName,Email,City,Phone,Zip,Unique ID,Key,Source'
     csv_merge.write(fieldNameFileName + ',' + fieldNameFileNo + ',' + csv_headerNew)
     csv_merge.write('\n')
     for file in s3files:
@@ -233,7 +233,7 @@ if __name__ == '__main__':
                 + '","' + row[header_map[FileSource]["LastName"]] + '",' + row[header_map[FileSource]["Email"]]
                 + ',"' + row[header_map[FileSource]["City"]] + '",' + row[header_map[FileSource]["Phone"]]
                 + ',' + row[header_map[FileSource]["Zip"]] + ',' + row[header_map[FileSource]["Unique ID"]]
-                + ',' + row[header_map[FileSource]["Key"]] + '\n')
+                + ',' + row[header_map[FileSource]["Key"]] + ',' + FileSource + '\n')
                 print(outrow)
                 csv_merge.write(outrow)
         fileno = fileno + 1
@@ -261,7 +261,7 @@ if __name__ == '__main__':
         outputfieldnames = reader.fieldnames
     else: #FileSource = "comebackkc1"
         fieldNameSourceFileUniqueId = header_map[FileSource]["Unique ID"] #this is probably different for each file - a GUID in some cases
-        outputfieldnames = [fieldNameFileName,fieldNameFileNo,fieldNameIdInSource,fieldNameSourceFileUniqueId,'FirstName', 'LastName','Email','City','Phone','Zip']
+        outputfieldnames = [fieldNameFileName,fieldNameFileNo,fieldNameIdInSource,fieldNameSourceFileUniqueId,'FirstName', 'LastName','Email','City','Phone','Zip','Source']
         # If a settings file already exists, we'll just load that and skip training
     if os.path.exists(settings_file):
         print('reading from', settings_file)
@@ -349,12 +349,14 @@ if __name__ == '__main__':
                 fieldNameConfidence: score
             }
 
-    with open(output_file, 'w') as f_output, open(csv_out) as f_input:
+    with open(output_file, 'w') as f_output, open(csv_out) as f_input,open('sm_' +output_file, 'w') as f_outsm:
 
         reader = csv.DictReader(f_input)
         fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
         writer = csv.DictWriter(f_output, fieldnames=fieldnames)
         writer.writeheader()
+        writersm = csv.DictWriter(f_outsm, fieldnames=fieldnames)
+        writersm.writeheader()
 
         for row in reader:
             row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
@@ -375,12 +377,13 @@ if __name__ == '__main__':
                      fieldNameIdInSource: row[fieldNameIdInSource], fieldNameSourceFileUniqueId:row["Unique ID"],
                     'FirstName': row['FirstName'], 'LastName': row['LastName']
                      , 'City': row['City'], 'Zip': row['Zip']
-                     , 'Phone': row['Phone'], 'Email': row['Email']
+                     , 'Phone': row['Phone'], 'Email': row['Email'], 'Source': row['Source']
                      , fieldNameClusterId: row[fieldNameClusterId], fieldNameConfidence: row[fieldNameConfidence]}
             writer.writerow(newrow)
-
+            if row[fieldNameConfidence] < 1 and row[fieldNameConfidence] > .75:
+                writersm.writerow(newrow)
 #https://www.usepandas.com/csv/sort-csv-data-by-column
-    df = pd.read_csv(output_file)
+    df = pd.read_csv('sm_' +output_file)
     sorted_df = df.sort_values(by=["ConfidenceScore","ClusterId"], ascending=[True,True])
     sorted_df.to_csv('sorted' + output_file, index=False)
     writeToS3Bucket(output_file, output_bucket, s3output_file)
