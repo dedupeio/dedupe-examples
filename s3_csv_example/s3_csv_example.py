@@ -12,8 +12,11 @@ import logging
 import optparse
 import sys
 
+import pandas as pd
+
 import dedupe
 from unidecode import unidecode
+
 
 
 def preProcess(column):
@@ -126,6 +129,8 @@ if __name__ == '__main__':
     settings_file = os.path.join(scriptpath, settings_file)
     training_file = os.path.join(scriptpath, training_file)
     mappings_file = os.path.join(scriptpath, mappings_file)
+
+
 
     header_map = {}
     header_map.update(readMappings(mappings_file))
@@ -373,6 +378,11 @@ if __name__ == '__main__':
                      , 'Phone': row['Phone'], 'Email': row['Email']
                      , fieldNameClusterId: row[fieldNameClusterId], fieldNameConfidence: row[fieldNameConfidence]}
             writer.writerow(newrow)
+
+#https://www.usepandas.com/csv/sort-csv-data-by-column
+    df = pd.read_csv(output_file)
+    sorted_df = df.sort_values(by=["ConfidenceScore","ClusterId"], ascending=[True,True])
+    sorted_df.to_csv('sorted' + output_file, index=False)
     writeToS3Bucket(output_file, output_bucket, s3output_file)
 
     #C:\Users\Administrator\AppData\Local\Programs\Python\Python39\python s3_csv_example.py c4kc-cvax-deduplication c4kc-cvax-deduplication
