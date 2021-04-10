@@ -50,7 +50,7 @@ def readMappings(filename):
     with open(mappings_file) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            fldSource = str(row['Source'])
+            fldSource = str(row[fieldNameSource])
             clean_row = [(k, preProcessCase(v)) for (k, v) in row.items()]
             data_d[fldSource] = dict(clean_row)
 
@@ -107,6 +107,7 @@ if __name__ == '__main__':
     fieldNameIdInSource = 'Key' #not dynamic - we totally control this
     fieldNameClusterId = 'ClusterId' #not dynamic - we totally control this 
     fieldNameConfidence = 'ConfidenceScore' #not dynamic - we totally control this 
+    fieldNameSource = 'Source' #not dynamic - we totally control this 
     FileSource = "comebackkc1"
     output_file = 's3_csv_example_output' + timestr + '.csv'
     s3output_file = 'output/s3_csv_example_output' + timestr + '.csv'
@@ -222,7 +223,7 @@ if __name__ == '__main__':
     #replacing Receipt Number with IDinSource in this file!!!
     #TODO - Read in Headers and do a replace of header names based on the mappings.
     #csv_headerNew = fieldNameIdInSource + ',Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,Zip,FirstName,LastName,Street Address,City,"Phone",Email,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
-    csv_headerNew = 'FirstName,LastName,Email,City,Phone,Zip,Unique ID,Key,Source'
+    csv_headerNew = 'FirstName,LastName,Email,City,Phone,Zip,Unique ID,Key,' + fieldNameSource
     csv_merge.write(fieldNameFileName + ',' + fieldNameFileNo + ',' + csv_headerNew)
     csv_merge.write('\n')
     for file in s3files:
@@ -389,17 +390,29 @@ if __name__ == '__main__':
                      fieldNameIdInSource: row[fieldNameIdInSource], fieldNameSourceFileUniqueId:row["Unique ID"],
                     'FirstName': row['FirstName'], 'LastName': row['LastName']
                      , 'City': row['City'], 'Zip': row['Zip']
-                     , 'Phone': row['Phone'], 'Email': row['Email'], 'Source': row['Source']
+                     , 'Phone': row['Phone'], 'Email': row['Email'], fieldNameSource: row[fieldNameSource]
                      , fieldNameClusterId: row[fieldNameClusterId], fieldNameConfidence: row[fieldNameConfidence]}
             writer.writerow(newrow)
             if row[fieldNameConfidence] < 1 and row[fieldNameConfidence] > .75:
                 writersm.writerow(newrow)
 #https://www.usepandas.com/csv/sort-csv-data-by-column
     df = pd.read_csv('sm_' + output_file)
-    sorted_df = df.sort_values(by=["ConfidenceScore","ClusterId"], ascending=[True,True])
+    sorted_df = df.sort_values(by=[fieldNameClusterId,"ConfidenceScore"], ascending=[True,True])
     sorted_df.to_csv('sorted' + output_file, index=False)
     os.remove(output_file)
     os.remove('sm_' + output_file)
+
+    df = pd.read_csv('sorted' + output_file)
+    g1 = df.groupby(fieldNameSource).get_group('Agency2').ClusterId.values
+    with open('Agency' + output_file, 'w') as f_output, open('sorted' + output_file) as f_input:
+        reader = csv.DictReader(f_input)
+        fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
+        writer = csv.DictWriter(f_output, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in reader:
+            if int(row[fieldNameClusterId]) in g1:
+               writer.writerow(row)
+
 
     writeToS3Bucket(output_file, output_bucket, s3output_file)
 
