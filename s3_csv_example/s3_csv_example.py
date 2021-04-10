@@ -403,16 +403,25 @@ if __name__ == '__main__':
     os.remove('sm_' + output_file)
 
     df = pd.read_csv('sorted' + output_file)
-    g1 = df.groupby(fieldNameSource).get_group('Agency2').ClusterId.values
-    with open('Agency' + output_file, 'w') as f_output, open('sorted' + output_file) as f_input:
-        reader = csv.DictReader(f_input)
-        fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
-        writer = csv.DictWriter(f_output, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in reader:
-            if int(row[fieldNameClusterId]) in g1:
-               writer.writerow(row)
 
+    for filen in fileInfos["f"]:
+        ss = filen['source']
+        if ss == '':
+            continue
+        gg = df.groupby(fieldNameSource).get_group(ss).ClusterId.values
+        with open(ss + output_file, 'w') as a_out, open('sorted' + output_file) as f_input:
+            reader = csv.DictReader(f_input)
+            fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
+            writer = csv.DictWriter(a_out, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in reader:
+                if int(row[fieldNameClusterId]) in gg:
+                    writer.writerow(row)
+            a_out.close()
+            df2 = pd.read_csv(ss + output_file)
+            sorted_df = df2.sort_values(by=[fieldNameClusterId,"ConfidenceScore"], ascending=[True,True])
+            sorted_df.to_csv('sorted' + ss + output_file, index=False)
+            os.remove(ss + output_file)
 
     writeToS3Bucket(output_file, output_bucket, s3output_file)
 
