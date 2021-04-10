@@ -46,8 +46,6 @@ def preProcessCase(column):
         column = None
     return column
 def readMappings(filename):
-
-
     data_d = {}
     with open(mappings_file) as f:
         reader = csv.DictReader(f)
@@ -63,7 +61,6 @@ def readData(filename):
     Read in our data from a CSV file and create a dictionary of records,
     where the key is a unique record ID and each value is dict
     """
-
     data_d = {}
     with open(filename) as f:
         reader = csv.DictReader(f)
@@ -71,7 +68,6 @@ def readData(filename):
             clean_row = [(k, preProcess(v)) for (k, v) in row.items()]
             row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
             data_d[row_id] = dict(clean_row)
-
     return data_d
 
 def writeToS3Bucket(local_file_to_send, output_bucket, s3output_file):
@@ -163,7 +159,9 @@ if __name__ == '__main__':
      #                   Key=filename)
         #csv_header = 'Id,Source,Site name,Address,Zip,Phone,Fax,Program Name,Length of Day,IDHS Provider ID,Agency,Neighborhood,Funded Enrollment,Program Option,Number per Site EHS,Number per Site HS,Director,Head Start Fund,Eearly Head Start Fund,CC fund,Progmod,Website,Executive Director,Center Director,ECE Available Programs,NAEYC Valid Until,NAEYC Program Id,Email Address,Ounce of Prevention Description,Purple binder service type,Column,Column2'
     else: #FileSource = "comebackkc1"
-        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323.csv')
+        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/ResponseExportComeBackKC1.csv')
+        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/Agency2.csv')
+
         #csv_header = 'Receipt Number,Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,What is your zip code?,First Name,Last Name,Street Address,City,"Phone number (please enter numbers only, no dashes, spaces, or parentheses)",Email address,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
 
     csv_out = 'C:/Users/robkr/Source/Repos/dedupe-examples/s3_csv_example/combinedfile.csv'
@@ -175,18 +173,25 @@ if __name__ == '__main__':
     fileInfo["num"]=0
     fileInfos["f"].append(fileInfo)
 
-    fileprefix = 'a_'
+    fileprefix = 'pre_'
 #4Start############# This ugly section exists to remove the extra header that is in some csv files #################
     fileno = 1 #Used to make the key independent per record when we combine multiple input files
-    count = -1
     #replacing Receipt Number with IDinSource in this file!!!
     #TODO - Read in Headers and do a replace of header names based on the mappings.
     for file in s3files:
+        count = -1
         firstpos=file.rfind("/")
         lastpos=len(file)
         filenameonly = file[firstpos+1:lastpos]
         if filenameonly.startswith("Response"):
             FileSource="comebackkc1"
+            fileInfo = {fileno: []}
+            fileInfo["source"]=FileSource
+            fileInfo["num"]=fileno
+            fileInfo["unq"]=header_map[FileSource]["Unique ID"]
+            fileInfos["f"].append(fileInfo)
+        if filenameonly.startswith("Agency"):
+            FileSource="Agency2"
             fileInfo = {fileno: []}
             fileInfo["source"]=FileSource
             fileInfo["num"]=fileno
@@ -198,10 +203,14 @@ if __name__ == '__main__':
             if (FileSource=="comebackkc1") and (count < 0): #line.startswith(csv_header):
                 count = count + 1 #skip this line - remove it from the rewritten file
                 continue
+            if (FileSource=="Agency2") and (count < 0): #line.startswith(csv_header):
+                count = count + 1 #skip this line - remove it from the rewritten file
+                continue
             csv_stripextraheader.write(line)
             print(count)
             count = count + 1
         csv_in.close()
+        #os.remove(file)
         fileno = fileno + 1
     csv_stripextraheader.close()
 #4End############# This ugly section exists to remove the extra header that is in some csv files #################
@@ -222,6 +231,8 @@ if __name__ == '__main__':
         filenameonly = file[firstpos+1:lastpos]
         if filenameonly.startswith("Response"):
             FileSource="comebackkc1"
+        if filenameonly.startswith("Agency"):
+            FileSource="Agency2"
         #https://stackoverflow.com/questions/49562499/how-to-fix-unicodedecodeerror-charmap-codec-cant-decode-byte-0x9d-in-posit
         #I had sever 0x92 - https://stackoverflow.com/questions/37083687/unicodedecodeerror-ascii-codec-cant-decode-byte-0x92
         with open(fileprefix + filenameonly,"r",encoding='windows-1252') as f_input:
@@ -237,6 +248,7 @@ if __name__ == '__main__':
                 print(outrow)
                 csv_merge.write(outrow)
         fileno = fileno + 1
+        os.remove(fileprefix + filenameonly)
     csv_merge.close()
 #5End############# Combine multiple input files into one single file with consistent column headers #################
 
@@ -383,9 +395,12 @@ if __name__ == '__main__':
             if row[fieldNameConfidence] < 1 and row[fieldNameConfidence] > .75:
                 writersm.writerow(newrow)
 #https://www.usepandas.com/csv/sort-csv-data-by-column
-    df = pd.read_csv('sm_' +output_file)
+    df = pd.read_csv('sm_' + output_file)
     sorted_df = df.sort_values(by=["ConfidenceScore","ClusterId"], ascending=[True,True])
     sorted_df.to_csv('sorted' + output_file, index=False)
+    os.remove(output_file)
+    os.remove('sm_' + output_file)
+
     writeToS3Bucket(output_file, output_bucket, s3output_file)
 
     #C:\Users\Administrator\AppData\Local\Programs\Python\Python39\python s3_csv_example.py c4kc-cvax-deduplication c4kc-cvax-deduplication
