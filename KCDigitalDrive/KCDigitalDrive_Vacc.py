@@ -23,14 +23,20 @@ def preProcess(column):
     Do a little bit of data cleaning with the help of Unidecode and Regex.
     Things like casing, extra spaces, quotes and new lines can be ignored.
     """
-    column = unidecode(column)
-    column = re.sub('  +', ' ', column)
-    column = re.sub('\n', ' ', column)
-    column = column.strip().strip('"').strip("'").lower().strip()
+    if column == None:
+        return column
+    try:
+        column = unidecode(column)
+        column = re.sub('  +', ' ', column)
+        column = re.sub('\n', ' ', column)
+        column = column.strip().strip('"').strip("'").lower().strip()
+    except:
+        return column
     # If data is missing, indicate that by setting the value to `None`
     if not column:
         column = None
     return column
+
 def preProcessCase(column):
     """
     Do a little bit of data cleaning with the help of Unidecode and Regex.
@@ -54,6 +60,19 @@ def readMappings(filename):
             data_d[fldSource] = dict(clean_row)
 
     return data_d
+def writeToLog(message, error):
+    csv_log = open('logfile.csv', 'a+', newline='')
+#    csv_logHeader = 'DateTime,Message,Error'
+    #csv_log.write(csv_logHeader)
+    csv_log.write(time.strftime("%Y.%m.%d %H:%M.%S") + ',' + message)
+    csv_log.write('\n')
+    print(message + ' at ' + time.strftime("%Y.%m.%d %H:%M.%S"))
+    if error != '':
+        csv_err = open('errors.csv', 'a+', newline='')
+        csv_err.write(time.strftime("%Y.%m.%d %H:%M.%S") + ',' + message + ',' + error)
+        csv_err.write('\n')
+        print(message + ': ' + error + ' at ' + time.strftime("%Y.%m.%d %H:%M.%S"))
+
 
 def readData(filename):
     """
@@ -64,9 +83,13 @@ def readData(filename):
     with open(filename) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            clean_row = [(k, preProcess(v)) for (k, v) in row.items()]
-            row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
-            data_d[row_id] = dict(clean_row)
+            try:
+                clean_row = [(k, preProcess(v)) for (k, v) in row.items()]
+                if row['Key'] != None:
+                    row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
+                    data_d[row_id] = dict(clean_row)
+            except:
+                print(row)
     return data_d
 
 def writeToS3Bucket(local_file_to_send, output_bucket, s3output_file):
@@ -103,7 +126,10 @@ if __name__ == '__main__':
 
     # 1. Setup
     import time
-    print('1. Combining Files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    writeToLog('Pgm','Start')
+
+    #print('1. Combining Files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
+    writeToLog('1.0 Combining Files','')
     timestr = time.strftime(".%Y.%m.%d-%H.%M.%S")
     
     fieldNameFileNo = 'FileNo' #not dynamic - we totally control this
@@ -128,12 +154,14 @@ if __name__ == '__main__':
     mappings_file = os.path.join(scriptpath, mappings_file)
 
     #2. Load all file mappings metadata
-    print('2. Loading headers at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('2. Loading headers at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    writeToLog('2.0 Loading headers','')
     header_map = {}
     header_map.update(readMappings(mappings_file))
 
     #3. Import files to working area (aka folders local to python script on hard drive)
-    print('3. Importing files to python script directories at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('3. Importing files to python script directories at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    writeToLog('3.0 Importing files to python script directories','')
     import sys
     if len(sys.argv) > 1:
         bucket = sys.argv[1]
@@ -152,16 +180,18 @@ if __name__ == '__main__':
                 data = s3_client.get_object(Bucket=bucket, Key=filename)
                 if filename[:6] == 'input/' and len(filename) > 6:
                     print(filename)
-                    local_file = filename[6:]  #remove input/ from the name of the file
-                    s3_client.download_file(bucket,filename,local_file)
-                    s3files.append(local_file)
-                    response = s3_client.delete_object(Bucket=bucket,Key=filename)
+                    if len(filename) > filename.rfind("/")+1:
+                        local_file = filename[6:].replace("/",".")  #remove input/ from the name of the file
+                        s3_client.download_file(bucket,filename,local_file)
+                        s3files.append(local_file)
+                        response = s3_client.delete_object(Bucket=bucket,Key=filename)
     else: #AppFileSource = "local"
-        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/ResponseExportComeBackKC1.csv')
-        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/Agency2.csv')
+        #s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/ResponseExportComeBackKC1.csv')
+        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/SAFE01X.csv')
 
 #4. Pre-Process Files- This ugly section exists to remove the extra header that is in some csv files #################
-    print('4. Pre-processing files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('4. Pre-processing files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    writeToLog('4.0 Pre-processing files','')
 
     fileInfos = { "f":[]}
     fileInfo = {0: []}
@@ -178,6 +208,7 @@ if __name__ == '__main__':
         firstpos=file.rfind("/")
         lastpos=len(file)
         filenameonly = file[firstpos+1:lastpos]
+        writeToLog('4.5 Pocessing file ' + filenameonly,'')
         if filenameonly.startswith("Response"):
             FileSource="comebackkc1"
             fileInfo = {fileno: []}
@@ -185,23 +216,34 @@ if __name__ == '__main__':
             fileInfo["num"]=fileno
             fileInfo["unq"]=header_map[FileSource]["Unique ID"]
             fileInfos["f"].append(fileInfo)
-        if filenameonly.startswith("Agency"):
-            FileSource="Agency2"
+        if filenameonly.startswith("CBKC01"):
+            FileSource="CBKC01"
             fileInfo = {fileno: []}
             fileInfo["source"]=FileSource
             fileInfo["num"]=fileno
             fileInfo["unq"]=header_map[FileSource]["Unique ID"]
             fileInfos["f"].append(fileInfo)
+        if filenameonly.startswith("SAFE01"):
+            FileSource="SAFE01"
+            fileInfo = {fileno: []}
+            fileInfo["source"]=FileSource
+            fileInfo["num"]=fileno
+            fileInfo["unq"]=header_map[FileSource]["Unique ID"]
+            fileInfos["f"].append(fileInfo)  
         csv_stripextraheader = open(fileprefix + filenameonly, 'w')
         csv_in = open(file,"r",encoding='utf-8') #https://stackoverflow.com/questions/49562499/how-to-fix-unicodedecodeerror-charmap-codec-cant-decode-byte-0x9d-in-posit
         for line in csv_in:
             if (FileSource=="comebackkc1") and (count < 0): #line.startswith(csv_header):
                 count = count + 1 #skip this line - remove it from the rewritten file
                 continue
-            if (FileSource=="Agency2") and (count < 0): #line.startswith(csv_header):
+            if (FileSource=="CBKC01") and (count < 0): #line.startswith(csv_header):
                 count = count + 1 #skip this line - remove it from the rewritten file
                 continue
-            csv_stripextraheader.write(line)
+            try:
+                csv_stripextraheader.write(line)
+            except UnicodeEncodeError as e:
+                print(line)
+                writeToLog('UnicodeEncodeError', 'record ' + str(count) +  ': ' + str(e))
             #print(count)
             count = count + 1
         csv_in.close()
@@ -211,7 +253,9 @@ if __name__ == '__main__':
 #4End############# This ugly section exists to remove the extra header that is in some csv files #################
 
 #5. Combine the input files into one .csv files with consistent column headers #################
-    print('5. Combining files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('5. Combining files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    writeToLog('5.0 Combining files','')
+
     fileno = 1 #Used to make the key independent per record when we combine multiple input files
     count = 0
     csv_merge = open(combined_file, 'w', newline='')
@@ -225,8 +269,10 @@ if __name__ == '__main__':
         filenameonly = file[firstpos+1:lastpos]
         if filenameonly.startswith("Response"): #TODO - Can we map this?
             FileSource="comebackkc1"
-        if filenameonly.startswith("Agency"):
-            FileSource="Agency2"
+        if filenameonly.startswith("CBKC01"):
+            FileSource="CBKC01"
+        if filenameonly.startswith("SAFE01"):
+            FileSource="SAFE01"
         #https://stackoverflow.com/questions/49562499/how-to-fix-unicodedecodeerror-charmap-codec-cant-decode-byte-0x9d-in-posit
         #I had sever 0x92 - https://stackoverflow.com/questions/37083687/unicodedecodeerror-ascii-codec-cant-decode-byte-0x92
         with open(fileprefix + filenameonly,"r",encoding='windows-1252') as f_input:
@@ -234,13 +280,17 @@ if __name__ == '__main__':
             for row in reader:
                 #print(count)
                 count = count + 1
-                outrow = (filenameonly + ',' + str(fileno) + ',"' + row[header_map[FileSource]["FirstName"]]
-                + '","' + row[header_map[FileSource]["LastName"]] + '",' + row[header_map[FileSource]["Email"]]
-                + ',"' + row[header_map[FileSource]["City"]] + '",' + row[header_map[FileSource]["Phone"]]
-                + ',' + row[header_map[FileSource]["Zip"]] + ',' + row[header_map[FileSource]["Unique ID"]]
-                + ',' + row[header_map[FileSource]["Key"]] + ',' + FileSource + '\n')
-                #print(outrow)
-                csv_merge.write(outrow)
+                try:
+                    outrow = (filenameonly + ',' + str(fileno) + ',"' + row[header_map[FileSource]["FirstName"]]
+                    + '","' + row[header_map[FileSource]["LastName"]] + '",' + row[header_map[FileSource]["Email"]]
+                    + ',"' + row[header_map[FileSource]["City"]] + '",' + row[header_map[FileSource]["Phone"]]
+                    + ',' + row[header_map[FileSource]["Zip"]] + ',' + row[header_map[FileSource]["Unique ID"]]
+                    + ',' + row[header_map[FileSource]["Key"]] + ',' + FileSource + '\n')
+                    #print(outrow)
+                    csv_merge.write(outrow)
+                except UnicodeEncodeError as e:
+                    print(row)
+                    writeToLog('UnicodeEncodeError', 'record ' + str(count) +  ': ' + str(e))
         fileno = fileno + 1
         os.remove(fileprefix + filenameonly)
     csv_merge.close()
@@ -252,7 +302,9 @@ if __name__ == '__main__':
     #csv_header = 'Receipt Number,Response Reference ID,Respondent Email,URL submitted from,Form version submitted in,Response Submission DateTime,Time Taken To Complete (seconds),External ID,External Status,Are you planning to receive the COVID-19 vaccine?,What makes you uncertain about receiving the COVID-19 vaccine?,When would you like to get your first dose of the COVID-19 vaccine?,What state do you live in?,Which Kansas county do you live in?,"Do you live within the city limits of Kansas City, MO?",Which Missouri county do you live in?,What is your zip code?,First Name,Last Name,Street Address,City,"Phone number (please enter numbers only, no dashes, spaces, or parentheses)",Email address,What is your preferred method of contact?,We need your permission to contact you about COVID-19 testing and vaccination.,Is it okay for us to leave you a voicemail?,Sex,Age,Race/ethnicity (check as many as apply),"Do you have any pre-existing medical conditions or do you have any conditions that put you at increased risk of severe illness? (i.e. immunocompromised, diabetes, chronic lung conditions, cardiovascular disease, morbid obesity, etc.)","Do you live in or visit often crowded living settings? (For example, a supportive care facility, assisted living facility, group home, homeless shelter, or correctional setting)","How many members, including yourself, live in your household?",Do you have a history of any of the following pre-existing medical conditions?,Are you immuno-compromised?,What is your work status?,"What is your work zip code, either where you normally work in the office or on location or the zip code of your employers primary office?",Are you employed by any of the following types of patient-facing organizations?,What is the name of the health care provider for which you work?,Are you responsible for or in a position to influence vaccination planning for your employer or another organization?,What is the name of your employer or other organization?,What is your job title or role at your organization?'
 
 #6. Read the data from the combined file into our DataFrame for deduping
-    print('6. Importing data for Deduping at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('6. Importing data for Deduping at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
+    writeToLog('6.0 Importing data for Deduping','')
+
     data_d = {}
     data_d.update(readData(combined_file))
 #    for eachFile in s3files:
@@ -302,7 +354,8 @@ if __name__ == '__main__':
         # or not.
         # use 'y', 'n' and 'u' keys to flag duplicates
         # press 'f' when you are finished
-        print('starting active labeling...')
+        #print('starting active labeling...')
+        writeToLog('6.3 starting active labeling...','')
 
         dedupe.console_label(deduper)
 
@@ -325,11 +378,12 @@ if __name__ == '__main__':
     # `partition` will return sets of records that dedupe
     # believes are all referring to the same entity.
 
-    print('clustering...')
+    #print('clustering...' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')
+    writeToLog('6.5 clustering...','')
     clustered_dupes = deduper.partition(data_d, 0.5)
 
-    print('# duplicate sets', len(clustered_dupes))
-
+    #print('# duplicate sets', len(clustered_dupes))
+    writeToLog('6.8 # duplicate sets...','')
     # ## Writing Results
 
     # Write our original data back out to a CSV with a new column called
@@ -344,8 +398,11 @@ if __name__ == '__main__':
             }
 
 #7. Create new output files with the clustered information.  One file of just dups, another file with all data
-    print('7. Create output files with clustered info at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('7. Create output files with clustered info at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
+    writeToLog('7.0 Create output files with clustered info','')
+
     smallPrefix = 'sm.'
+
     with open(output_file, 'w') as f_output, open(combined_file) as f_input,open(smallPrefix +output_file, 'w') as f_outsm:
 
         reader = csv.DictReader(f_input)
@@ -354,22 +411,28 @@ if __name__ == '__main__':
         writer.writeheader()
         writersm = csv.DictWriter(f_outsm, fieldnames=fieldnames)
         writersm.writeheader()
-
+        count = 0
         for row in reader:
-            row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
-            row.update(cluster_membership[row_id])
-            newrow = {fieldNameFileName: row[fieldNameFileName], fieldNameFileNo: row[fieldNameFileNo],
-                     fieldNameIdInSource: row[fieldNameIdInSource], fieldNameSourceFileUniqueId:row["Unique ID"],
-                    'FirstName': row['FirstName'], 'LastName': row['LastName']
-                     , 'City': row['City'], 'Zip': row['Zip']
-                     , 'Phone': row['Phone'], 'Email': row['Email'], fieldNameSource: row[fieldNameSource]
-                     , fieldNameClusterId: row[fieldNameClusterId], fieldNameConfidence: row[fieldNameConfidence]}
-            writer.writerow(newrow)
-            if row[fieldNameConfidence] < 1 and row[fieldNameConfidence] > .75:
-                writersm.writerow(newrow)
-
+            count = count +1
+            try:
+                row_id = str(int(row[fieldNameFileNo])) + '.' + str(int(row[fieldNameIdCol]))
+                row.update(cluster_membership[row_id])
+                newrow = {fieldNameFileName: row[fieldNameFileName], fieldNameFileNo: row[fieldNameFileNo],
+                         fieldNameIdInSource: row[fieldNameIdInSource], fieldNameSourceFileUniqueId:row["Unique ID"],
+                        'FirstName': row['FirstName'], 'LastName': row['LastName']
+                         , 'City': row['City'], 'Zip': row['Zip']
+                         , 'Phone': row['Phone'], 'Email': row['Email'], fieldNameSource: row[fieldNameSource]
+                         , fieldNameClusterId: row[fieldNameClusterId], fieldNameConfidence: row[fieldNameConfidence]}
+                writer.writerow(newrow)
+                if row[fieldNameConfidence] < 1 and row[fieldNameConfidence] > .75:
+                    writersm.writerow(newrow)
+            except Exception as e:
+                print (row)
+                writeToLog('Error', 'record ' + str(count) +  ': ' + str(e))
 #8. Sort the single output file that has cluster info
-    print('8. Sorting files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('8. Sorting files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    writeToLog('8.0 Sorting files','')
+
 #https://www.usepandas.com/csv/sort-csv-data-by-column
     sortedPrefix = 'sorted.'
     df = pd.read_csv(smallPrefix + output_file)
@@ -379,7 +442,9 @@ if __name__ == '__main__':
     os.remove(smallPrefix + output_file)
 
 #9. Split the output file into output files per agency and sort it
-    print('9. Split files per agency at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('9. Split files per agency at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
+    writeToLog('9.0 Split files per agency','')
+
     df = pd.read_csv(sortedPrefix + output_file)
     for filen in fileInfos["f"]:
         ss = filen['source']
@@ -387,6 +452,7 @@ if __name__ == '__main__':
             continue
         agencyFilePrefix = ss + '.'
         gg = df.groupby(fieldNameSource).get_group(ss).ClusterId.values
+        linesInFile=0
         with open(agencyFilePrefix + output_file, 'w') as a_out, open(sortedPrefix + output_file) as f_input:
             reader = csv.DictReader(f_input)
             fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
@@ -395,14 +461,17 @@ if __name__ == '__main__':
             for row in reader:
                 if int(row[fieldNameClusterId]) in gg:
                     writer.writerow(row)
+                    linesInFile = linesInFile+1
             a_out.close()
             df2 = pd.read_csv(agencyFilePrefix + output_file)
             sorted_df = df2.sort_values(by=[fieldNameClusterId,"ConfidenceScore"], ascending=[True,True])
             sorted_df.to_csv(agencyFilePrefix + sortedPrefix + output_file, index=False)
             os.remove(agencyFilePrefix + output_file)
+            writeToLog('9.8 ' + str(linesInFile) + ' records written to ' + agencyFilePrefix + sortedPrefix + output_file ,'')
 
 #10 
-    print('10. Send files to s3 at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    #print('10. Send files to s3 at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
+    writeToLog('9.9 Send files to s3','')
     writeToS3Bucket(output_file, output_bucket, s3output_file)
 
     #C:\Users\Administrator\AppData\Local\Programs\Python\Python39\python s3_csv_example.py c4kc-cvax-deduplication c4kc-cvax-deduplication
