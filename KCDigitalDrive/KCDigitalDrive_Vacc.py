@@ -210,7 +210,7 @@ if __name__ == '__main__':
         firstpos=file.rfind("/")
         lastpos=len(file)
         filenameonly = file[firstpos+1:lastpos]
-        writeToLog('4.5 Pocessing file ' + filenameonly,'')
+        writeToLog('4.5 Processing file ' + filenameonly,'')
         if filenameonly.startswith("Response"):
             FileSource="comebackkc1"
             fileInfo = {fileno: []}
