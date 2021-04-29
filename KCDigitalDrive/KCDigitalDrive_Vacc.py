@@ -139,7 +139,7 @@ if __name__ == '__main__':
     fieldNameClusterId = 'ClusterId' #not dynamic - we totally control this 
     fieldNameConfidence = 'ConfidenceScore' #not dynamic - we totally control this 
     fieldNameSource = 'Source' #not dynamic - we totally control this 
-    AppFileSource = "local"
+    AppFileSource = "s3"
     output_file = 'Duplicate_Vaccination_Signups' + timestr + '.csv'
     s3output_file = 'output/Duplicate_Vaccination_Signups' + timestr + '.csv'
     settings_file = 'Duplicate_Vaccination_Signups_learned_settings'
@@ -165,8 +165,10 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1:
         bucket = sys.argv[1]
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
         output_bucket = sys.argv[2]
+    if len(sys.argv) > 3:
+        AppFileSource = sys.argv[3]
     output_bucket=bucket
     s3files = []
 
