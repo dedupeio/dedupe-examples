@@ -99,10 +99,8 @@ def writeToS3Bucket( output_bucket):
         if ss == '':
             continue
         agencyFilePrefix = ss + '.'
-        output_fileAgain = 'Duplicate_Vaccination_Signups' + timestr + '.csv'
-        agency_file = os.path.join(scriptpath, agencyFilePrefix + output_file_base)
         agency_sorted_file = os.path.join(scriptpath, agencyFilePrefix + 'sorted.' + output_file_base)
-        s3.meta.client.upload_file(agency_sorted_file, output_bucket, 'output/' + agencyFilePrefix + sortedPrefix + output_file_base)
+        s3.meta.client.upload_file(agency_sorted_file, output_bucket, 'output/' + agencyFilePrefix + 'sorted.' + output_file_base)
         os.remove(agency_sorted_file)
 
 
