@@ -138,7 +138,7 @@ if __name__ == '__main__':
     fieldNameClusterId = 'ClusterId' #not dynamic - we totally control this 
     fieldNameConfidence = 'ConfidenceScore' #not dynamic - we totally control this 
     fieldNameSource = 'Source' #not dynamic - we totally control this 
-    AppFileSource = "local" #s3 or local
+    AppFileSource = "s3" #s3 or local
     log_file = 'logfile.csv'
     errors_file = 'errors.csv'
     mappings_file = 'Mappings.csv'
@@ -199,6 +199,8 @@ if __name__ == '__main__':
                     print(filename)
                     if len(filename) > filename.rfind("/")+1:
                         local_file = filename[6:].replace("/",".")  #remove input/ from the name of the file
+                        local_file = os.path.join(scriptpath, local_file)
+                        writeToLog('3.5 Downloading ' + filename + ' from s3 to ' + local_file,'')
                         s3_client.download_file(bucket,filename,local_file)
                         s3files.append(local_file)
                         response = s3_client.delete_object(Bucket=bucket,Key=filename)
