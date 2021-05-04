@@ -310,7 +310,7 @@ if __name__ == '__main__':
                 except UnicodeEncodeError as e:
                     print(row)
                     writeToLog('UnicodeEncodeError', 'record ' + str(count) +  ': ' + str(e))
-            os.remove(step4_file)
+        os.remove(step4_file)
         fileno = fileno + 1
     csv_merge.close()
 #5End############# Combine multiple input files into one single file with consistent column headers #################
