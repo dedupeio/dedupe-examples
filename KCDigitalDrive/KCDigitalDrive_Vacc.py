@@ -61,14 +61,14 @@ def readMappings(filename):
 
     return data_d
 def writeToLog(message, error):
-    csv_log = open('logfile.csv', 'a+', newline='')
+    csv_log = open(log_file, 'a+', newline='')
 #    csv_logHeader = 'DateTime,Message,Error'
     #csv_log.write(csv_logHeader)
     csv_log.write(time.strftime("%Y.%m.%d %H:%M.%S") + ',' + message)
     csv_log.write('\n')
     print(message + ' at ' + time.strftime("%Y.%m.%d %H:%M.%S"))
     if error != '':
-        csv_err = open('errors.csv', 'a+', newline='')
+        csv_err = open(errors_file, 'a+', newline='')
         csv_err.write(time.strftime("%Y.%m.%d %H:%M.%S") + ',' + message + ',' + error)
         csv_err.write('\n')
         print(message + ': ' + error + ' at ' + time.strftime("%Y.%m.%d %H:%M.%S"))
@@ -92,15 +92,18 @@ def readData(filename):
                 print(row)
     return data_d
 
-def writeToS3Bucket(local_file_to_send, output_bucket, s3output_file):
+def writeToS3Bucket( output_bucket):
     s3 = boto3.resource('s3')
     for filen in fileInfos["f"]:
         ss = filen['source']
         if ss == '':
             continue
         agencyFilePrefix = ss + '.'
-        s3.meta.client.upload_file(agencyFilePrefix + sortedPrefix + local_file_to_send, output_bucket, 'output/' + agencyFilePrefix + sortedPrefix + local_file_to_send)
-        os.remove(agencyFilePrefix + sortedPrefix +local_file_to_send)
+        output_fileAgain = 'Duplicate_Vaccination_Signups' + timestr + '.csv'
+        agency_file = os.path.join(scriptpath, agencyFilePrefix + output_file_base)
+        agency_sorted_file = os.path.join(scriptpath, agencyFilePrefix + 'sorted.' + output_file_base)
+        s3.meta.client.upload_file(agency_sorted_file, output_bucket, 'output/' + agencyFilePrefix + sortedPrefix + output_file_base)
+        os.remove(agency_sorted_file)
 
 
 if __name__ == '__main__':
@@ -126,10 +129,6 @@ if __name__ == '__main__':
 
     # 1. Setup
     import time
-    writeToLog('Pgm','Start')
-
-    #print('1. Combining Files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
-    writeToLog('1.0 Combining Files','')
     timestr = time.strftime(".%Y.%m.%d-%H.%M.%S")
     
     fieldNameFileNo = 'FileNo' #not dynamic - we totally control this
@@ -139,19 +138,35 @@ if __name__ == '__main__':
     fieldNameClusterId = 'ClusterId' #not dynamic - we totally control this 
     fieldNameConfidence = 'ConfidenceScore' #not dynamic - we totally control this 
     fieldNameSource = 'Source' #not dynamic - we totally control this 
-    AppFileSource = "s3"
-    output_file = 'Duplicate_Vaccination_Signups' + timestr + '.csv'
-    s3output_file = 'output/Duplicate_Vaccination_Signups' + timestr + '.csv'
+    AppFileSource = "local" #s3 or local
+    log_file = 'logfile.csv'
+    errors_file = 'errors.csv'
+    mappings_file = 'Mappings.csv'
     settings_file = 'Duplicate_Vaccination_Signups_learned_settings'
     training_file = 'Duplicate_Vaccination_Signups_training.json'
     combined_file = 'combinedfile.csv'
+    output_file_base = 'Duplicate_Vaccination_Signups' + timestr + '.csv'
+    outputsm_file = 'sm.' + output_file_base
+    outputsorted_file = 'sorted.' + output_file_base
+    s3output_file = 'output/' + output_file_base
     bucket='c4kc-cvax-deduplication' #bucket name could be overridden by value passed in below
 
-    mappings_file = 'Mappings.csv'
     scriptpath = os.path.dirname(__file__)
+    log_file = os.path.join(scriptpath, log_file)
+    errors_file = os.path.join(scriptpath, errors_file)
+    mappings_file = os.path.join(scriptpath, mappings_file)
     settings_file = os.path.join(scriptpath, settings_file)
     training_file = os.path.join(scriptpath, training_file)
-    mappings_file = os.path.join(scriptpath, mappings_file)
+    combined_file = os.path.join(scriptpath, combined_file)
+    output_file = os.path.join(scriptpath, output_file_base)
+    outputsm_file = os.path.join(scriptpath, outputsm_file)
+    outputsorted_file = os.path.join(scriptpath, outputsorted_file)
+
+    writeToLog('Pgm','Start')
+    #print('1. Combining Files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
+    writeToLog('1.0 Combining Files','')
+
+
 
     #2. Load all file mappings metadata
     #print('2. Loading headers at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
@@ -232,7 +247,8 @@ if __name__ == '__main__':
             fileInfo["num"]=fileno
             fileInfo["unq"]=header_map[FileSource]["Unique ID"]
             fileInfos["f"].append(fileInfo)  
-        csv_stripextraheader = open(fileprefix + filenameonly, 'w')
+        step4_file = os.path.join(scriptpath, fileprefix + filenameonly)
+        csv_stripextraheader = open(step4_file, 'w')
         csv_in = open(file,"r",encoding='utf-8') #https://stackoverflow.com/questions/49562499/how-to-fix-unicodedecodeerror-charmap-codec-cant-decode-byte-0x9d-in-posit
         for line in csv_in:
             if (FileSource=="comebackkc1") and (count < 0): #line.startswith(csv_header):
@@ -277,7 +293,8 @@ if __name__ == '__main__':
             FileSource="SAFE01"
         #https://stackoverflow.com/questions/49562499/how-to-fix-unicodedecodeerror-charmap-codec-cant-decode-byte-0x9d-in-posit
         #I had sever 0x92 - https://stackoverflow.com/questions/37083687/unicodedecodeerror-ascii-codec-cant-decode-byte-0x92
-        with open(fileprefix + filenameonly,"r",encoding='windows-1252') as f_input:
+        step4_file = os.path.join(scriptpath, fileprefix + filenameonly)
+        with open(step4_file,"r",encoding='windows-1252') as f_input:
             reader = csv.DictReader(f_input, dialect='excel')
             for row in reader:
                 #print(count)
@@ -294,7 +311,7 @@ if __name__ == '__main__':
                     print(row)
                     writeToLog('UnicodeEncodeError', 'record ' + str(count) +  ': ' + str(e))
         fileno = fileno + 1
-        os.remove(fileprefix + filenameonly)
+        os.remove(step4_file)
     csv_merge.close()
 #5End############# Combine multiple input files into one single file with consistent column headers #################
 
@@ -403,9 +420,7 @@ if __name__ == '__main__':
     #print('7. Create output files with clustered info at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
     writeToLog('7.0 Create output files with clustered info','')
 
-    smallPrefix = 'sm.'
-
-    with open(output_file, 'w') as f_output, open(combined_file) as f_input,open(smallPrefix +output_file, 'w') as f_outsm:
+    with open(output_file, 'w') as f_output, open(combined_file) as f_input,open(outputsm_file, 'w') as f_outsm:
 
         reader = csv.DictReader(f_input)
         fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
@@ -431,23 +446,23 @@ if __name__ == '__main__':
             except Exception as e:
                 print (row)
                 writeToLog('Error', 'record ' + str(count) +  ': ' + str(e))
+    os.remove(combined_file)
 #8. Sort the single output file that has cluster info
     #print('8. Sorting files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
     writeToLog('8.0 Sorting files','')
 
 #https://www.usepandas.com/csv/sort-csv-data-by-column
-    sortedPrefix = 'sorted.'
-    df = pd.read_csv(smallPrefix + output_file)
+    df = pd.read_csv(outputsm_file)
     sorted_df = df.sort_values(by=[fieldNameClusterId,"ConfidenceScore"], ascending=[True,True])
-    sorted_df.to_csv(sortedPrefix + output_file, index=False)
+    sorted_df.to_csv(outputsorted_file, index=False)
     os.remove(output_file)
-    os.remove(smallPrefix + output_file)
+    os.remove(outputsm_file)
 
 #9. Split the output file into output files per agency and sort it
     #print('9. Split files per agency at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...') 
     writeToLog('9.0 Split files per agency','')
 
-    df = pd.read_csv(sortedPrefix + output_file)
+    df = pd.read_csv(outputsorted_file)
     for filen in fileInfos["f"]:
         ss = filen['source']
         if ss == '':
@@ -455,7 +470,9 @@ if __name__ == '__main__':
         agencyFilePrefix = ss + '.'
         gg = df.groupby(fieldNameSource).get_group(ss).ClusterId.values
         linesInFile=0
-        with open(agencyFilePrefix + output_file, 'w') as a_out, open(sortedPrefix + output_file) as f_input:
+        agency_file = os.path.join(scriptpath, agencyFilePrefix + output_file_base)
+        agency_sorted_file = os.path.join(scriptpath, agencyFilePrefix + 'sorted.' + output_file_base)
+        with open(agency_file, 'w') as a_out, open(outputsorted_file) as f_input:
             reader = csv.DictReader(f_input)
             fieldnames = [fieldNameClusterId, fieldNameConfidence] + outputfieldnames 
             writer = csv.DictWriter(a_out, fieldnames=fieldnames)
@@ -465,16 +482,16 @@ if __name__ == '__main__':
                     writer.writerow(row)
                     linesInFile = linesInFile+1
             a_out.close()
-            df2 = pd.read_csv(agencyFilePrefix + output_file)
+            df2 = pd.read_csv(agency_file)
             sorted_df = df2.sort_values(by=[fieldNameClusterId,"ConfidenceScore"], ascending=[True,True])
-            sorted_df.to_csv(agencyFilePrefix + sortedPrefix + output_file, index=False)
-            os.remove(agencyFilePrefix + output_file)
-            writeToLog('9.8 ' + str(linesInFile) + ' records written to ' + agencyFilePrefix + sortedPrefix + output_file ,'')
-
+            sorted_df.to_csv(agency_sorted_file, index=False)
+            os.remove(agency_file)
+            writeToLog('9.8 ' + str(linesInFile) + ' records written to ' + agency_sorted_file ,'')
+    os.remove(outputsorted_file)
 #10 
     #print('10. Send files to s3 at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
     writeToLog('9.9 Send files to s3','')
-    writeToS3Bucket(output_file, output_bucket, s3output_file)
+    writeToS3Bucket( output_bucket)
 
     #C:\Users\Administrator\AppData\Local\Programs\Python\Python39\python s3_csv_example.py c4kc-cvax-deduplication c4kc-cvax-deduplication
 
