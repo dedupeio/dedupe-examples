@@ -224,7 +224,7 @@ if __name__ == '__main__':
     #TODO - Read in Headers and do a replace of header names based on the mappings.
     for file in s3files:
         count = -1
-        firstpos=file.rfind("/")
+        firstpos=file.rfind("\\") #not sure why this works differently on deployed site
         lastpos=len(file)
         filenameonly = file[firstpos+1:lastpos]
         writeToLog('4.5 Processing file ' + filenameonly,'')
