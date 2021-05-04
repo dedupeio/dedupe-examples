@@ -262,7 +262,7 @@ if __name__ == '__main__':
             try:
                 csv_stripextraheader.write(line)
             except UnicodeEncodeError as e:
-                print(line)
+                #print(line) - argh - print doesn't work on unattended script
                 writeToLog('UnicodeEncodeError', 'record ' + str(count) +  ': ' + str(e))
             #print(count)
             count = count + 1
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     csv_merge.write(fieldNameFileName + ',' + fieldNameFileNo + ',' + csv_headerNew)
     csv_merge.write('\n')
     for file in s3files:
-        firstpos=file.rfind("/")
+        firstpos=file.rfind("\\") #argh
         lastpos=len(file)
         filenameonly = file[firstpos+1:lastpos]
         if filenameonly.startswith("Response"): #TODO - Can we map this?
