@@ -204,7 +204,7 @@ if __name__ == '__main__':
                         response = s3_client.delete_object(Bucket=bucket,Key=filename)
     else: #AppFileSource = "local"
         #s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/ResponseExportComeBackKC1.csv')
-        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/SAFE01X.csv')
+        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/SAFE01.SAFE01x - Copy.csv')
 
 #4. Pre-Process Files- This ugly section exists to remove the extra header that is in some csv files #################
     #print('4. Pre-processing files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
@@ -222,7 +222,11 @@ if __name__ == '__main__':
     #TODO - Read in Headers and do a replace of header names based on the mappings.
     for file in s3files:
         count = -1
-        firstpos=file.rfind("\\") #not sure why this works differently on deployed site
+        firstpos=0
+        if AppFileSource == "s3":
+            firstpos=file.rfind("\\") 
+        else:
+            firstpos=file.rfind("/")
         lastpos=len(file)
         filenameonly = file[firstpos+1:lastpos]
         writeToLog('4.5 Processing file ' + filenameonly,'')
@@ -265,7 +269,8 @@ if __name__ == '__main__':
             #print(count)
             count = count + 1
         csv_in.close()
-        #os.remove(file)
+        if AppFileSource == "s3":
+            os.remove(file)
         fileno = fileno + 1
     csv_stripextraheader.close()
 #4End############# This ugly section exists to remove the extra header that is in some csv files #################
@@ -282,7 +287,11 @@ if __name__ == '__main__':
     csv_merge.write(fieldNameFileName + ',' + fieldNameFileNo + ',' + csv_headerNew)
     csv_merge.write('\n')
     for file in s3files:
-        firstpos=file.rfind("\\") #argh
+        firstpos=0
+        if AppFileSource == "s3":
+            firstpos=file.rfind("\\") 
+        else:
+            firstpos=file.rfind("/")
         lastpos=len(file)
         filenameonly = file[firstpos+1:lastpos]
         if filenameonly.startswith("Response"): #TODO - Can we map this?
