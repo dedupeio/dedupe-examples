@@ -5,14 +5,13 @@ Athena database, and identifies the unique donors.
 
 To follow this example you need to 
 
-* Create a Athena database called 'contributions'
-* Update `athena_example/config.py` with your Athena credentials
+* Update `athena_example/config.py` with your Athena credentials, database name and the path to sroe the data
 * Install dependencies, `pip install -r requirements.txt`
 
 Once that's all done you can run the example:
 
 ```bash
-cd mysql_example
+cd athena_example
 python athena_init.py 
 python athena_example.py
 ```

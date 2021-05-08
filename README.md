@@ -1,12 +1,12 @@
 # Dedupe Examples
 
-Adding Athena Example scripts for the [dedupe](https://github.com/dedupeio/dedupe), a library that uses machine learning to perform de-duplication and entity resolution quickly on structured data.
+Example scripts for the [dedupe](https://github.com/dedupeio/dedupe), a library that uses machine learning to perform de-duplication and entity resolution quickly on structured data.
 
 Part of the [Dedupe.io](https://dedupe.io/) cloud service and open source toolset for de-duplicating and finding fuzzy matches in your data. For more details, see the [differences between Dedupe.io and the dedupe library](https://dedupe.io/documentation/should-i-use-dedupeio-or-the-dedupe-python-library.html).
 
-To get the athena examples:
+To get these examples:
 ```bash
-git clone https://github.com/asajadi/dedupe-examples.git
+git clone https://github.com/dedupeio/dedupe-examples.git
 cd dedupe-examples
 ```
 
@@ -34,28 +34,66 @@ Afterwards, whenever you want to work on dedupe-examples,
 workon dedupe-examples
 ```
 
+### [CSV example](https://dedupeio.github.io/dedupe-examples/docs/csv_example.html) - early childhood locations
 
-### [athena example](https://dedupeio.github.io/dedupe-examples/docs/mysql_example.html) - IL campaign contributions
-
-Takes a database of IL campaign contribution data, loads it in to a
-Athena database, and identifies the unique donors. 
-
-To follow this example you need to 
-
-* Create a Athena database called 'contributions'
-* Update `athena_example/config.py` with your Athena credentials
-* Install dependencies, `pip install -r requirements.txt`
-
-Once that's all done you can run the example:
+This example works with a list of early childhood education sites in Chicago from 10 different sources.
 
 ```bash
-cd mysql_example
-python athena_init_db.py 
-python athena_example.py
+cd csv_example
+pip install unidecode
+python csv_example.py
+```
+  (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished)
+
+**To see how you might use dedupe with smallish data, see the [annotated source code for csv_example.py](https://dedupeio.github.io/dedupe-examples/docs/csv_example.html).**
+
+### [Patent example](https://dedupeio.github.io/dedupe-examples/docs/patent_example.html) -  patent holders
+
+This example works with Dutch inventors from the PATSTAT international patent data file
+
+```bash
+cd patent_example
+pip install unidecode
+python patent_example.py
+```
+  (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished)
+
+### [Record Linkage example](https://dedupeio.github.io/dedupe-examples/docs/record_linkage_example.html) -  electronics products
+This example links two spreadsheets of electronics products and links up the matching entries. Each dataset individually has no duplicates.
+
+```bash
+cd record_linkage_example
+python record_linkage_example.py
 ```
 
-  (use 'y', 'n' and 'u' keys to flag duplicates for active learning, 'f' when you are finished) 
+**To see how you might use dedupe for linking datasets, see the [annotated source code for record_linkage_example.py](https://dedupeio.github.io/dedupe-examples/docs/record_linkage_example.html).**
 
+### [Gazetteer example](https://dedupeio.github.io/dedupe-examples/docs/gazetteer_example.html) -  electronics products
+This example links two spreadsheets of electronics products and links up the matching entries using the Gazetteer class
+
+```bash
+cd gazetteer_example.py
+python gazetteer_example.py
+```
+
+
+### [MySQL example](https://dedupeio.github.io/dedupe-examples/docs/mysql_example.html) - IL campaign contributions
+
+See `mysql_example/README.md` for details
+
+**To see how you might use dedupe with bigish data, see the [annotated source code for mysql_example](https://dedupeio.github.io/dedupe-examples/docs/mysql_example.html).**
+
+
+### [PostgreSQL big dedupe example](https://dedupeio.github.io/dedupe-examples/docs/pgsql_big_dedupe_example.html) - PostgreSQL example on large dataset
+
+See `pgsql_big_dedupe_example/README.md` for details
+
+This is the same example as the MySQL IL campaign contributions dataset above, but ported to run on PostgreSQL.
+
+### Athena example - IL campaign contributions
+See `athena_example/README.md` for details
+
+This is the same example as the MySQL IL campaign contributions dataset above, but ported to run on Athena.
 
 
 
