@@ -26,4 +26,3 @@ ENV
 distpgsql_init_db.py
 pgsql_example/pgsql_init_db.py
 .idea
-.ipynb_checkpoints*
