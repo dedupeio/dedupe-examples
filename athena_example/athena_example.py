@@ -113,7 +113,7 @@ if __name__ == '__main__':
     # We did a fair amount of preprocessing of the fields in
     # `athena_init_db.py`    
     DONOR_SELECT = """SELECT donor_id, city, name, zip, state, address
-                      from as_processed_donors"""
+                      from processed_donors"""
 
     # ## Training
 
@@ -191,13 +191,13 @@ if __name__ == '__main__':
 
     # To run blocking on such a large set of data, we create a separate table
     # that contains blocking keys and record ids
-    print('creating as_blocking_map database')
-    athenautils.drop_external_table("as_blocking_map", 
-                                    location = 's3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_blocking_map'),
+    print('creating blocking_map database')
+    athenautils.drop_external_table("blocking_map", 
+                                    location = 's3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'blocking_map'),
                                     database=config.DATABASE)
 
     q="""
-    CREATE EXTERNAL TABLE as_blocking_map     
+    CREATE EXTERNAL TABLE blocking_map     
         (block_key VARCHAR(200), donor_id INTEGER)
     ROW FORMAT DELIMITED
       FIELDS TERMINATED BY '\t'
@@ -208,7 +208,7 @@ if __name__ == '__main__':
         'classification'='csv', 
         --'skip.header.line.count'='1',  
         'serialization.null.format'='')
-    """.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_blocking_map') 
+    """.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'blocking_map') 
     athenautils.athena_start_query(q, database=config.DATABASE)
 
     # If dedupe learned a Index Predicate, we have to take a pass
@@ -219,7 +219,7 @@ if __name__ == '__main__':
     # This never runs, index_fields is empty, possible bug?
     for field in deduper.fingerprinter.index_fields:
         q = """
-        SELECT DISTINCT {field} FROM as_processed_donors
+        SELECT DISTINCT {field} FROM processed_donors
         WHERE {field} IS NOT NULL
         """.format(field=field)
         cur = dict_cursor_execute(q, databse=config.DATABASE)
@@ -236,7 +236,7 @@ if __name__ == '__main__':
 
     b_data = deduper.fingerprinter(full_data)
     athenautils.write_many(b_data, 
-                           filename='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_blocking_map/blocking.csv'))
+                           filename='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'blocking_map/blocking.csv'))
 
 
     # select unique pairs to compare
@@ -250,12 +250,12 @@ if __name__ == '__main__':
                       ARRAY[ b.city, b.name, b.zip, b.state, b.address])
                   AS JSON))
         FROM (SELECT DISTINCT l.donor_id as east, r.donor_id as west
-             from as_blocking_map as l
-             INNER JOIN as_blocking_map as r
+             from blocking_map as l
+             INNER JOIN blocking_map as r
              using (block_key)
              where l.donor_id < r.donor_id) ids
-        INNER JOIN as_processed_donors a on ids.east=a.donor_id
-        INNER JOIN as_processed_donors b on ids.west=b.donor_id
+        INNER JOIN processed_donors a on ids.east=a.donor_id
+        INNER JOIN processed_donors b on ids.west=b.donor_id
        """
     read_cur = cursor_execute(q, database=config.DATABASE)
 
@@ -266,14 +266,14 @@ if __name__ == '__main__':
     clustered_dupes = deduper.cluster(deduper.score(record_pairs(read_cur)),
                                       threshold=0.5)
 
-#     athenautils.athena_start_query("DROP TABLE IF EXISTS as_entity_map", database=config.DATABASE)
-    athenautils.drop_external_table("as_entity_map", 
-                                    location='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_entity_map/'), 
+#     athenautils.athena_start_query("DROP TABLE IF EXISTS entity_map", database=config.DATABASE)
+    athenautils.drop_external_table("entity_map", 
+                                    location='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'entity_map/'), 
                                     database=config.DATABASE)
     
-    print('creating as_entity_map database')
+    print('creating entity_map database')
     q="""
-    CREATE EXTERNAL TABLE as_entity_map     
+    CREATE EXTERNAL TABLE entity_map     
         (donor_id INTEGER, canon_id INTEGER, 
          cluster_score FLOAT)
     ROW FORMAT DELIMITED
@@ -285,11 +285,11 @@ if __name__ == '__main__':
         'classification'='csv', 
         --'skip.header.line.count'='1',  
         'serialization.null.format'='')
-    """.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_entity_map') 
+    """.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'entity_map') 
     athenautils.athena_start_query(q, database=config.DATABASE) 
 
     athenautils.write_many(cluster_ids(clustered_dupes),
-                          filename='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_entity_map/entity_map.csv'))
+                          filename='s3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'entity_map/entity_map.csv'))
 
     # Print out the number of duplicates found
     print('# duplicate sets')
@@ -303,28 +303,28 @@ if __name__ == '__main__':
 
     locale.setlocale(locale.LC_ALL, 'en_CA.UTF-8')  # for pretty printing numbers
     
-    athenautils.athena_start_query("DROP TABLE IF EXISTS as_e_map", database=config.DATABASE)
+    athenautils.athena_start_query("DROP TABLE IF EXISTS e_map", database=config.DATABASE)
     
     q = """
-        CREATE TABLE as_e_map as 
-        SELECT COALESCE(canon_id, as_entity_map.donor_id) AS canon_id, as_entity_map.donor_id 
-        FROM as_entity_map 
-        RIGHT JOIN as_donors USING(donor_id)        
+        CREATE TABLE e_map as 
+        SELECT COALESCE(canon_id, entity_map.donor_id) AS canon_id, entity_map.donor_id 
+        FROM entity_map 
+        RIGHT JOIN donors USING(donor_id)        
         """    
     athenautils.athena_start_query(q, database=config.DATABASE)
     
     q = """
-        SELECT array_join(filter(array[as_donors.first_name, as_donors.last_name], x-> x IS NOT NULL), ' ') AS name,   
+        SELECT array_join(filter(array[donors.first_name, donors.last_name], x-> x IS NOT NULL), ' ') AS name,   
             donation_totals.totals AS totals 
-        FROM as_donors INNER JOIN 
+        FROM donors INNER JOIN 
             (SELECT canon_id, SUM(cast (amount as double)) AS totals 
-            FROM as_contributions INNER JOIN as_e_map 
+            FROM contributions INNER JOIN e_map 
             USING (donor_id) 
             GROUP BY (canon_id) 
             ORDER BY totals 
             DESC LIMIT 10) 
             AS donation_totals 
-        ON as_donors.donor_id = donation_totals.canon_id
+        ON donors.donor_id = donation_totals.canon_id
         ORDER BY totals DESC
     """
     cur = dict_cursor_execute(q, database=config.DATABASE)
@@ -339,10 +339,10 @@ if __name__ == '__main__':
     q = """
         with donorscontributions as(
 
-            SELECT as_donors.donor_id, 
-                array_join(filter(array[as_donors.first_name, as_donors.last_name], x-> x IS NOT NULL), ' ') AS name,
-                cast(as_contributions.amount as double) as amount
-            FROM as_donors INNER JOIN as_contributions 
+            SELECT donors.donor_id, 
+                array_join(filter(array[donors.first_name, donors.last_name], x-> x IS NOT NULL), ' ') AS name,
+                cast(contributions.amount as double) as amount
+            FROM donors INNER JOIN contributions 
                 USING (donor_id) 
             )
         SELECT name, sum(amount) AS totals  

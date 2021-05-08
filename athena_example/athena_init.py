@@ -8,7 +8,7 @@ __Note:__ You will need to run this script first before execuing
 [athena_example.py](athena_example.py).
  
 Tables created:
-* as_raw_table - raw import of entire CSV file
+* raw_table - raw import of entire CSV file
 * donors - all distinct donors based on name and address
 * recipients - all distinct campaign contribution recipients
 * contributions - contribution amounts tied to donor and recipients tables
@@ -51,17 +51,17 @@ if not os.path.exists(contributions_txt_file) :
 
 
 print('importing raw data from csv...')
-athenautils.drop_external_table("as_raw_table", 
-                                location = 's3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_raw_table'),
+athenautils.drop_external_table("raw_table", 
+                                location = 's3://{}/{}'.format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'raw_table'),
                                 database=config.DATABASE)    
-athenautils.athena_start_query("DROP TABLE IF EXISTS as_donors", database=config.DATABASE)
-athenautils.athena_start_query("DROP TABLE IF EXISTS as_recipients", database=config.DATABASE)
-athenautils.athena_start_query("DROP TABLE IF EXISTS as_contributions", database=config.DATABASE)
-athenautils.athena_start_query("DROP TABLE IF EXISTS as_processed_donors", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS donors", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS recipients", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS contributions", database=config.DATABASE)
+athenautils.athena_start_query("DROP TABLE IF EXISTS processed_donors", database=config.DATABASE)
 
 
 q=r"""
-CREATE EXTERNAL TABLE as_raw_table 
+CREATE EXTERNAL TABLE raw_table 
     (reciept_id INT, last_name VARCHAR(70), first_name VARCHAR(35), 
     address_1 VARCHAR(35), address_2 VARCHAR(36), city VARCHAR(20), 
     state VARCHAR(15), zip VARCHAR(11), report_type VARCHAR(24), 
@@ -85,7 +85,7 @@ TBLPROPERTIES (
     'classification'='csv', 
     'skip.header.line.count'='1',  
     'serialization.null.format'='')
-""".format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'as_raw_table') 
+""".format(config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY+'raw_table') 
 athenautils.athena_start_query(q, database=config.DATABASE)
 
 
@@ -93,7 +93,7 @@ df_cursor = pd.read_csv(contributions_txt_file, sep='\t', escapechar='\\', quoti
                         error_bad_lines=False, warn_bad_lines=True, dtype=str, keep_default_na=False, na_values=[''],
                         chunksize=config.BUFFERSIZE)
 chunkcount = 0
-filename=os.path.join("s3://", config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY,'as_raw_table', os.path.splitext(contributions_txt_file)[0]+'.csv')
+filename=os.path.join("s3://", config.DATABASE_BUCKET, config.DATABASE_ROOT_KEY,'raw_table', os.path.splitext(contributions_txt_file)[0]+'.csv')
 for df in df_cursor: 
     # Remove the very few records that mess up the demo 
     # (demo purposes only! Don't do something like this in production)
@@ -125,7 +125,7 @@ for df in df_cursor:
     
 print('creating donors table...')
 q="""
-CREATE TABLE as_donors as
+CREATE TABLE donors as
     with tmp as
       (SELECT DISTINCT 
            NULLIF(TRIM(last_name), '') as last_name, 
@@ -137,21 +137,21 @@ CREATE TABLE as_donors as
            NULLIF(TRIM(zip), '') as zip, 
            NULLIF(TRIM(employer), '') as employer, 
            NULLIF(TRIM(occupation), '') as occupation
-      FROM as_raw_table)
+      FROM raw_table)
     SELECT row_number() over () as donor_id, * from tmp"""
 athenautils.athena_start_query(q, database=config.DATABASE)
 
 
 q="""
-CREATE TABLE as_recipients as
-    SELECT DISTINCT committee_id as recipient_id, committee_name as name FROM as_raw_table
+CREATE TABLE recipients as
+    SELECT DISTINCT committee_id as recipient_id, committee_name as name FROM raw_table
 """
 athenautils.athena_start_query(q, database=config.DATABASE)
 
 print('creating contributions table')
 
 q="""
-CREATE TABLE as_contributions as
+CREATE TABLE contributions as
     SELECT reciept_id as contribution_id, 
         donors.donor_id as donor_id , 
         committee_id as recipient_id, 
@@ -163,21 +163,21 @@ CREATE TABLE as_contributions as
         election_type, election_year, 
         date_parse(report_period_begin, '%m/%d/%Y') as report_period_begin, 
         date_parse(report_period_end, '%m/%d/%Y') as report_period_end 
-    FROM as_raw_table JOIN as_donors donors ON 
-        coalesce(donors.first_name, '') = coalesce(TRIM(as_raw_table.first_name), '') AND 
-        coalesce(donors.last_name, '') = coalesce(TRIM(as_raw_table.last_name), '') AND 
-        coalesce(donors.address_1, '') = coalesce(TRIM(as_raw_table.address_1), '') AND 
-        coalesce(donors.address_2, '') = coalesce(TRIM(as_raw_table.address_2), '') AND 
-        coalesce(donors.city, '') = coalesce(TRIM(as_raw_table.city), '') AND 
-        coalesce(donors.state, '') = coalesce(TRIM(as_raw_table.state), '') AND 
-        coalesce(donors.employer, '') = coalesce(TRIM(as_raw_table.employer), '') AND 
-        coalesce(donors.occupation , '')= coalesce(TRIM(as_raw_table.occupation), '') AND 
-        coalesce(donors.zip, '') = coalesce(TRIM(as_raw_table.zip), '')"""
+    FROM raw_table JOIN donors donors ON 
+        coalesce(donors.first_name, '') = coalesce(TRIM(raw_table.first_name), '') AND 
+        coalesce(donors.last_name, '') = coalesce(TRIM(raw_table.last_name), '') AND 
+        coalesce(donors.address_1, '') = coalesce(TRIM(raw_table.address_1), '') AND 
+        coalesce(donors.address_2, '') = coalesce(TRIM(raw_table.address_2), '') AND 
+        coalesce(donors.city, '') = coalesce(TRIM(raw_table.city), '') AND 
+        coalesce(donors.state, '') = coalesce(TRIM(raw_table.state), '') AND 
+        coalesce(donors.employer, '') = coalesce(TRIM(raw_table.employer), '') AND 
+        coalesce(donors.occupation , '')= coalesce(TRIM(raw_table.occupation), '') AND 
+        coalesce(donors.zip, '') = coalesce(TRIM(raw_table.zip), '')"""
 
 athenautils.athena_start_query(q, database=config.DATABASE)
 
 q = """
-CREATE TABLE as_processed_donors AS  
+CREATE TABLE processed_donors AS  
     SELECT donor_id,  
      LOWER(city) AS city,  
      CASE WHEN (first_name IS NULL AND last_name IS NULL) 
@@ -193,7 +193,7 @@ CREATE TABLE as_processed_donors AS
      LOWER(occupation) AS occupation, 
      LOWER(employer) AS employer, 
      first_name is null AS person 
- FROM as_donors"""
+ FROM donors"""
 athenautils.athena_start_query(q, database=config.DATABASE)
 
 
