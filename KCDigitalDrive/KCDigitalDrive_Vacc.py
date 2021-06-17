@@ -204,7 +204,8 @@ if __name__ == '__main__':
                         response = s3_client.delete_object(Bucket=bucket,Key=filename)
     else: #AppFileSource = "local"
         #s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/ResponseExportComeBackKC1.csv')
-        s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/SAFE01.SAFE01x - Copy.csv')
+        #s3files.append('C:/Users/robkr/Downloads/ResponseExport-KCRegionalCOVID19VaccinationSurvey-20210323 (1)/SAFE01.SAFE01x - Copy.csv')
+        s3files.append('SAFE01TestData.csv')
 
 #4. Pre-Process Files- This ugly section exists to remove the extra header that is in some csv files #################
     #print('4. Pre-processing files at' + time.strftime(".%Y.%m.%d-%H.%M.%S") + '  ...')  
@@ -303,7 +304,8 @@ if __name__ == '__main__':
         #https://stackoverflow.com/questions/49562499/how-to-fix-unicodedecodeerror-charmap-codec-cant-decode-byte-0x9d-in-posit
         #I had sever 0x92 - https://stackoverflow.com/questions/37083687/unicodedecodeerror-ascii-codec-cant-decode-byte-0x92
         step4_file = os.path.join(scriptpath, fileprefix + filenameonly)
-        with open(step4_file,"r",encoding='windows-1252') as f_input:
+        #with open(step4_file,"r",encoding='windows-1252') as f_input:  #if OS is windows
+        with open(step4_file,"r") as f_input:
             reader = csv.DictReader(f_input, dialect='excel')
             for row in reader:
                 #print(count)

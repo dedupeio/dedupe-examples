@@ -23,6 +23,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="csv_example\requirements.txt" />
+    <Content Include="Dockerfile" />
     <Content Include="extended-variables\requirements.txt" />
     <Content Include="gazetteer_example\requirements-1.x.txt" />
     <Content Include="gazetteer_example\requirements-2.x.txt" />
