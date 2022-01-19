@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{d588098a-74ed-4cc7-a86f-26ff7f60504a}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>KCDigitalDrive\KCDigitalDrive_Vacc.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <CommandLineArguments>wildrydes-rob-kraft pp4ncaliftwo local</CommandLineArguments>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="csv_example\requirements.txt" />
+    <Content Include="Dockerfile" />
+    <Content Include="extended-variables\requirements.txt" />
+    <Content Include="gazetteer_example\requirements-1.x.txt" />
+    <Content Include="gazetteer_example\requirements-2.x.txt" />
+    <Content Include="KCDigitalDrive\combinedfile.csv" />
+    <Content Include="KCDigitalDrive\Duplicate_Vaccination_Signups_learned_settings" />
+    <Content Include="KCDigitalDrive\Duplicate_Vaccination_Signups_training.json" />
+    <Content Include="KCDigitalDrive\Mappings.csv" />
+    <Content Include="KCDigitalDrive\original.reals3_csv_example_learned_settings" />
+    <Content Include="KCDigitalDrive\original.reals3_csv_example_training.json" />
+    <Content Include="KCDigitalDrive\requirements.txt" />
+    <Content Include="mysql_example\requirements.txt" />
+    <Content Include="pgsql_big_dedupe_example\requirements.txt" />
+    <Content Include="record_linkage_example\requirements.txt" />
+    <Content Include="requirements.txt" />
+    <Content Include="s3_csv_example\requirements.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="csv_example\csv_evaluation.py" />
+    <Compile Include="csv_example\csv_example.py" />
+    <Compile Include="extended-variables\officers.py" />
+    <Compile Include="gazetteer_example\gazetteer_evaluation.py" />
+    <Compile Include="gazetteer_example\gazetteer_example.py" />
+    <Compile Include="gazetteer_example\gazetteer_postgres_example.py" />
+    <Compile Include="KCDigitalDrive\KCDigitalDrive_Vacc.py" />
+    <Compile Include="mysql_example\mysql_example.py" />
+    <Compile Include="mysql_example\mysql_init_db.py" />
+    <Compile Include="patent_example\patent_evaluation.py" />
+    <Compile Include="patent_example\patent_example.py" />
+    <Compile Include="pgsql_big_dedupe_example\pgsql_big_dedupe_example.py" />
+    <Compile Include="pgsql_big_dedupe_example\pgsql_big_dedupe_example_init_db.py" />
+    <Compile Include="record_linkage_example\record_linkage_example.py" />
+    <Compile Include="record_linkage_example\record_linkage_example_evaluation.py" />
+    <Compile Include="s3_csv_example\s3_csv_example.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="csv_example" />
+    <Folder Include="extended-variables" />
+    <Folder Include="gazetteer_example" />
+    <Folder Include="KCDigitalDrive\" />
+    <Folder Include="mysql_example" />
+    <Folder Include="s3_csv_example\" />
+    <Folder Include="patent_example" />
+    <Folder Include="pgsql_big_dedupe_example" />
+    <Folder Include="record_linkage_example" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>

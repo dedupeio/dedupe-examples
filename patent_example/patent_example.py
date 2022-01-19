@@ -87,6 +87,12 @@ if __name__ == '__main__':
     settings_file = 'patstat_settings.json'
     training_file = 'patstat_training.json'
 
+    scriptpath = os.path.dirname(__file__)
+    input_file = os.path.join(scriptpath, input_file)
+    output_file = os.path.join(scriptpath, output_file)
+    settings_file = os.path.join(scriptpath, settings_file)
+    training_file = os.path.join(scriptpath, training_file)
+
     print('importing data ...')
     data_d = readData(input_file)
 
