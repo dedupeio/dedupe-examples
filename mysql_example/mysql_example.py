@@ -199,7 +199,7 @@ if __name__ == '__main__':
         with read_con.cursor() as cur:
             cur.execute("SELECT DISTINCT {field} FROM processed_donors "
                         "WHERE {field} IS NOT NULL".format(field=field))
-            field_data = (row[0] for row in cur)
+            field_data = (row[field] for row in cur)
             deduper.fingerprinter.index(field_data, field)
 
     # Now we are ready to write our blocking map table by creating a
