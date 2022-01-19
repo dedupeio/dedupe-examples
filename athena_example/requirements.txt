@@ -1,0 +1,3 @@
+pandas
+boto3
+dedupe

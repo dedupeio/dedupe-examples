@@ -90,6 +90,12 @@ See `pgsql_big_dedupe_example/README.md` for details
 
 This is the same example as the MySQL IL campaign contributions dataset above, but ported to run on PostgreSQL.
 
+### Athena example - IL campaign contributions
+See `athena_example/README.md` for details
+
+This is the same example as the MySQL IL campaign contributions dataset above, but ported to run on Athena.
+
+
 
 ## Training
 
