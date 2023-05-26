@@ -163,8 +163,12 @@ if __name__ == '__main__':
         for canon_id, score in matches:
             cluster_membership[messy_id] = {'Cluster ID': cluster_id,
                                             'Link Score': score}
-            cluster_membership[canon_id] = {'Cluster ID': cluster_id,
-                                            'Link Score': score}
+            try:
+              cluster_membership[canon_id] += [{'Cluster ID': cluster_id,
+                                            'Link Score': score}]
+            except:
+              cluster_membership[canon_id] = [{'Cluster ID': cluster_id,
+                                            'Link Score': score}]
 
     with open(output_file, 'w') as f:
 
@@ -188,7 +192,12 @@ if __name__ == '__main__':
 
                     record_id = filename + str(row_id)
                     cluster_details = cluster_membership.get(record_id, {})
-                    row['source file'] = fileno
-                    row.update(cluster_details)
-
-                    writer.writerow(row)
+                    if type(cluster_details)==dict:
+                        row['source file'] = fileno
+                        row.update(cluster_details)
+                        writer.writerow(row)
+                    else:
+                        for i in cluster_details:
+                            row['source file'] = fileno
+                            row.update(i)
+                            writer.writerow(row)
