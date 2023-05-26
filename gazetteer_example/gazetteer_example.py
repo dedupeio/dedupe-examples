@@ -158,7 +158,6 @@ if __name__ == '__main__':
     results = gazetteer.search(messy, n_matches=2, generator=True)
 
     cluster_membership = {}
-    cluster_id = 0
 
     for cluster_id, (messy_id, matches) in enumerate(results):
         for canon_id, score in matches:
@@ -166,7 +165,6 @@ if __name__ == '__main__':
                                             'Link Score': score}
             cluster_membership[canon_id] = {'Cluster ID': cluster_id,
                                             'Link Score': score}
-            cluster_id += 1
 
     with open(output_file, 'w') as f:
 
