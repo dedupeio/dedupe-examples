@@ -8,12 +8,11 @@ canonical set.
 
 """
 
-import os
 import csv
-import re
 import logging
 import optparse
-import collections
+import os
+import re
 
 import dedupe
 from unidecode import unidecode
@@ -26,13 +25,13 @@ def preProcess(column):
     """
 
     column = unidecode(column)
-    column = re.sub('\n', ' ', column)
-    column = re.sub('-', '', column)
-    column = re.sub('/', ' ', column)
-    column = re.sub("'", '', column)
-    column = re.sub(",", '', column)
-    column = re.sub(":", ' ', column)
-    column = re.sub(' +', ' ', column)
+    column = re.sub("\n", " ", column)
+    column = re.sub("-", "", column)
+    column = re.sub("/", " ", column)
+    column = re.sub("'", "", column)
+    column = re.sub(",", "", column)
+    column = re.sub(":", " ", column)
+    column = re.sub(" +", " ", column)
     column = column.strip().strip('"').strip("'").lower().strip()
     if not column:
         column = None
@@ -51,14 +50,14 @@ def readData(filename):
         reader = csv.DictReader(f)
         for i, row in enumerate(reader):
             clean_row = dict([(k, preProcess(v)) for (k, v) in row.items()])
-            if clean_row['price']:
-                clean_row['price'] = float(clean_row['price'][1:])
+            if clean_row["price"]:
+                clean_row["price"] = float(clean_row["price"][1:])
             data_d[filename + str(i)] = dict(clean_row)
 
     return data_d
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # ## Logging
 
@@ -66,9 +65,13 @@ if __name__ == '__main__':
     # for convenience.  To enable verbose logging, run `python
     # examples/csv_example/csv_example.py -v`
     optp = optparse.OptionParser()
-    optp.add_option('-v', '--verbose', dest='verbose', action='count',
-                    help='Increase verbosity (specify multiple times for more)'
-                    )
+    optp.add_option(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="count",
+        help="Increase verbosity (specify multiple times for more)",
+    )
     (opts, args) = optp.parse_args()
     log_level = logging.WARNING
     if opts.verbose:
@@ -80,41 +83,40 @@ if __name__ == '__main__':
 
     # ## Setup
 
-    output_file = 'gazetteer_output.csv'
-    settings_file = 'gazetteer_learned_settings'
-    training_file = 'gazetteer_training.json'
+    output_file = "gazetteer_output.csv"
+    settings_file = "gazetteer_learned_settings"
+    training_file = "gazetteer_training.json"
 
-    canon_file = os.path.join('data', 'AbtBuy_Buy.csv')
-    messy_file = os.path.join('data', 'AbtBuy_Abt.csv')
+    canon_file = os.path.join("data", "AbtBuy_Buy.csv")
+    messy_file = os.path.join("data", "AbtBuy_Abt.csv")
 
-    print('importing data ...')
+    print("importing data ...")
     messy = readData(messy_file)
-    print('N data 1 records: {}'.format(len(messy)))
+    print("N data 1 records: {}".format(len(messy)))
 
     canonical = readData(canon_file)
-    print('N data 2 records: {}'.format(len(canonical)))
+    print("N data 2 records: {}".format(len(canonical)))
 
     def descriptions():
         for dataset in (messy, canonical):
             for record in dataset.values():
-                yield record['description']
+                yield record["description"]
 
     if os.path.exists(settings_file):
-        print('reading from', settings_file)
-        with open(settings_file, 'rb') as sf:
+        print("reading from", settings_file)
+        with open(settings_file, "rb") as sf:
             gazetteer = dedupe.StaticGazetteer(sf)
 
     else:
         # Define the fields the gazetteer will pay attention to
-        #
-        # Notice how we are telling the gazetteer to use a custom
-        # field comparator for the 'price' field.
         fields = [
-            {'field': 'title', 'type': 'String'},
-            {'field': 'title', 'type': 'Text', 'corpus': descriptions()},
-            {'field': 'description', 'type': 'Text',
-             'has missing': True, 'corpus': descriptions()},
-            {'field': 'price', 'type': 'Price', 'has missing': True}]
+            dedupe.variables.String("title"),
+            dedupe.variables.Text("title"),
+            dedupe.variables.Text(
+                "description", corpus=descriptions(), has_missing=True
+            ),
+            dedupe.variables.Price("price", has_missing=True),
+        ]
 
         # Create a new gazetteer object and pass our data model to it.
         gazetteer = dedupe.Gazetteer(fields)
@@ -123,7 +125,7 @@ if __name__ == '__main__':
         # look for it an load it in.
         # __Note:__ if you want to train from scratch, delete the training_file
         if os.path.exists(training_file):
-            print('reading labeled examples from ', training_file)
+            print("reading labeled examples from ", training_file)
             with open(training_file) as tf:
                 gazetteer.prepare_training(messy, canonical, training_file=tf)
         else:
@@ -135,20 +137,20 @@ if __name__ == '__main__':
         # or not.
         # use 'y', 'n' and 'u' keys to flag duplicates
         # press 'f' when you are finished
-        print('starting active labeling...')
+        print("starting active labeling...")
 
         dedupe.console_label(gazetteer)
 
         gazetteer.train()
 
         # When finished, save our training away to disk
-        with open(training_file, 'w') as tf:
+        with open(training_file, "w") as tf:
             gazetteer.write_training(tf)
 
         # Save our weights and predicates to disk.  If the settings file
         # exists, we will skip all the training and learning next time we run
         # this file.
-        with open(settings_file, 'wb') as sf:
+        with open(settings_file, "wb") as sf:
             gazetteer.write_settings(sf)
 
         gazetteer.cleanup_training()
@@ -162,13 +164,17 @@ if __name__ == '__main__':
 
     for cluster_id, (messy_id, matches) in enumerate(results):
         for canon_id, score in matches:
-            cluster_membership[messy_id] = {'Cluster ID': cluster_id,
-                                            'Link Score': score}
-            cluster_membership[canon_id] = {'Cluster ID': cluster_id,
-                                            'Link Score': score}
+            cluster_membership[messy_id] = {
+                "Cluster ID": cluster_id,
+                "Link Score": score,
+            }
+            cluster_membership[canon_id] = {
+                "Cluster ID": cluster_id,
+                "Link Score": score,
+            }
             cluster_id += 1
 
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
 
         header_unwritten = True
 
@@ -178,8 +184,11 @@ if __name__ == '__main__':
 
                 if header_unwritten:
 
-                    fieldnames = (['Cluster ID', 'Link Score', 'source file'] +
-                                  reader.fieldnames)
+                    fieldnames = [
+                        "Cluster ID",
+                        "Link Score",
+                        "source file",
+                    ] + reader.fieldnames
 
                     writer = csv.DictWriter(f, fieldnames=fieldnames)
                     writer.writeheader()
@@ -190,7 +199,7 @@ if __name__ == '__main__':
 
                     record_id = filename + str(row_id)
                     cluster_details = cluster_membership.get(record_id, {})
-                    row['source file'] = fileno
+                    row["source file"] = fileno
                     row.update(cluster_details)
 
                     writer.writerow(row)

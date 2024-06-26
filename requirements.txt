@@ -1,3 +1,2 @@
-dedupe
+dedupe>=3.0.0
 Unidecode==0.4.16
-future

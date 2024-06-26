@@ -6,15 +6,15 @@ authors and demonstrates the Set and LatLong data types.
 
 """
 
-import os
 import csv
 import logging
 import optparse
+import os
 
 import dedupe
 
 
-def readData(filename, set_delim='**'):
+def readData(filename, set_delim="**"):
     """
     Remap columns for the following cases:
     - Lat and Long are mapped into a single LatLong tuple
@@ -27,16 +27,24 @@ def readData(filename, set_delim='**'):
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
             row = dict((k, v.lower()) for k, v in row.items())
-            if row['Lat'] == row['Lng'] == '0.0':
-                row['LatLong'] = None
+            if row["Lat"] == row["Lng"] == "0.0":
+                row["LatLong"] = None
             else:
-                row['LatLong'] = (float(row['Lat']), float(row['Lng']))
-            row['Class'] = tuple(sorted(row['Class'].split(set_delim))) if row['Class'] else None
-            row['Coauthor'] = tuple(sorted([author for author
-                                            in row['Coauthor'].split(set_delim)
-                                            if author != 'none']))
-            if row['Name'] == '':
-                row['Name'] = None
+                row["LatLong"] = (float(row["Lat"]), float(row["Lng"]))
+            row["Class"] = (
+                tuple(sorted(row["Class"].split(set_delim))) if row["Class"] else None
+            )
+            row["Coauthor"] = tuple(
+                sorted(
+                    [
+                        author
+                        for author in row["Coauthor"].split(set_delim)
+                        if author != "none"
+                    ]
+                )
+            )
+            if row["Name"] == "":
+                row["Name"] = None
 
             data_d[idx] = row
 
@@ -47,20 +55,20 @@ def readData(filename, set_delim='**'):
 # distance metrics
 def classes(data):
     for record in data.values():
-        yield record['Class']
+        yield record["Class"]
 
 
 def coauthors(data):
     for record in data.values():
-        yield record['Coauthor']
+        yield record["Coauthor"]
 
 
 def names(data):
     for record in data.values():
-        yield record['Name']
+        yield record["Name"]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # ## Logging
 
@@ -69,9 +77,13 @@ if __name__ == '__main__':
     # patent_example.py -v`
 
     optp = optparse.OptionParser()
-    optp.add_option('-v', '--verbose', dest='verbose', action='count',
-                    help='Increase verbosity (specify multiple times for more)'
-                    )
+    optp.add_option(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="count",
+        help="Increase verbosity (specify multiple times for more)",
+    )
     (opts, args) = optp.parse_args()
     log_level = logging.WARNING
 
@@ -82,48 +94,34 @@ if __name__ == '__main__':
             log_level = logging.DEBUG
     logging.getLogger().setLevel(log_level)
 
-    input_file = 'patstat_input.csv'
-    output_file = 'patstat_output.csv'
-    settings_file = 'patstat_settings.json'
-    training_file = 'patstat_training.json'
+    input_file = "patstat_input.csv"
+    output_file = "patstat_output.csv"
+    settings_file = "patstat_settings.json"
+    training_file = "patstat_training.json"
 
-    print('importing data ...')
+    print("importing data ...")
     data_d = readData(input_file)
 
     # ## Training
 
     if os.path.exists(settings_file):
-        print('reading from', settings_file)
-        with open(settings_file, 'rb') as sf:
+        print("reading from", settings_file)
+        with open(settings_file, "rb") as sf:
             deduper = dedupe.StaticDedupe(sf, num_cores=2)
 
     else:
         # Define the fields dedupe will pay attention to
         fields = [
-            {'field': 'Name',
-             'variable name': 'Name',
-             'type': 'String',
-             'has missing': True},
-            {'field': 'LatLong',
-             'type': 'LatLong',
-             'has missing': True},
-            {'field': 'Class',
-             'variable name': 'Class',
-             'type': 'Set',
-             'corpus': classes(data_d),
-             'has missing': True},
-            {'field': 'Coauthor',
-             'variable name': 'Coauthor',
-             'type': 'Set',
-             'corpus': coauthors(data_d),
-             'has missing': True},
-            {'field': 'Name',
-             'variable name': 'Name Text',
-             'type': 'Text',
-             'corpus': names(data_d),
-             'has missing': True},
-            {'type': 'Interaction',
-             'interaction variables': ['Name', 'Name Text']}
+            dedupe.variables.String("Name", name="name_string", has_missing=True),
+            dedupe.variables.LatLong("LatLong", has_missing=True),
+            dedupe.variables.Set("Class", corpus=classes(data_d), has_missing=True),
+            dedupe.variables.Set(
+                "Coauthor", corpus=coauthors(data_d), has_missing=True
+            ),
+            dedupe.variables.Text(
+                "Name", name="name_text", corpus=names(data_d), has_missing=True
+            ),
+            dedupe.variables.Interaction("name_string", "name_text"),
         ]
 
         # Create a new deduper object and pass our data model to it.
@@ -132,7 +130,7 @@ if __name__ == '__main__':
         # If we have training data saved from a previous run of dedupe,
         # look for it an load it in.
         if os.path.exists(training_file):
-            print('reading labeled examples from ', training_file)
+            print("reading labeled examples from ", training_file)
             with open(training_file) as tf:
                 deduper.prepare_training(data_d, training_file=tf)
         else:
@@ -146,24 +144,24 @@ if __name__ == '__main__':
 
         # use 'y', 'n' and 'u' keys to flag duplicates
         # press 'f' when you are finished
-        print('starting active labeling...')
+        print("starting active labeling...")
         dedupe.console_label(deduper)
 
         deduper.train()
 
         # When finished, save our training away to disk
-        with open(training_file, 'w') as tf:
+        with open(training_file, "w") as tf:
             deduper.write_training(tf)
 
         # Save our weights and predicates to disk.  If the settings file
         # exists, we will skip all the training and learning next time we run
         # this file.
-        with open(settings_file, 'wb') as sf:
+        with open(settings_file, "wb") as sf:
             deduper.write_settings(sf)
 
     clustered_dupes = deduper.partition(data_d, 0.5)
 
-    print('# duplicate sets', len(clustered_dupes))
+    print("# duplicate sets", len(clustered_dupes))
 
     # ## Writing Results
 
@@ -175,13 +173,13 @@ if __name__ == '__main__':
         for record_id, score in zip(records, scores):
             cluster_membership[record_id] = {
                 "Cluster ID": cluster_id,
-                "confidence_score": score
+                "confidence_score": score,
             }
 
-    with open(output_file, 'w') as f_output, open(input_file) as f_input:
+    with open(output_file, "w") as f_output, open(input_file) as f_input:
 
         reader = csv.DictReader(f_input)
-        fieldnames = ['Cluster ID', 'confidence_score'] + reader.fieldnames
+        fieldnames = ["Cluster ID", "confidence_score"] + reader.fieldnames
 
         writer = csv.DictWriter(f_output, fieldnames=fieldnames)
         writer.writeheader()

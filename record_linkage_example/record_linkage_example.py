@@ -8,11 +8,11 @@ online stores. The task is to link products between the datasets.
 The output will be a CSV with our linkded results.
 
 """
-import os
 import csv
-import re
 import logging
 import optparse
+import os
+import re
 
 import dedupe
 from unidecode import unidecode
@@ -25,13 +25,13 @@ def preProcess(column):
     """
 
     column = unidecode(column)
-    column = re.sub('\n', ' ', column)
-    column = re.sub('-', '', column)
-    column = re.sub('/', ' ', column)
-    column = re.sub("'", '', column)
-    column = re.sub(",", '', column)
-    column = re.sub(":", ' ', column)
-    column = re.sub('  +', ' ', column)
+    column = re.sub("\n", " ", column)
+    column = re.sub("-", "", column)
+    column = re.sub("/", " ", column)
+    column = re.sub("'", "", column)
+    column = re.sub(",", "", column)
+    column = re.sub(":", " ", column)
+    column = re.sub("  +", " ", column)
     column = column.strip().strip('"').strip("'").lower().strip()
     if not column:
         column = None
@@ -50,23 +50,27 @@ def readData(filename):
         reader = csv.DictReader(f)
         for i, row in enumerate(reader):
             clean_row = dict([(k, preProcess(v)) for (k, v) in row.items()])
-            if clean_row['price']:
-                clean_row['price'] = float(clean_row['price'][1:])
+            if clean_row["price"]:
+                clean_row["price"] = float(clean_row["price"][1:])
             data_d[filename + str(i)] = dict(clean_row)
 
     return data_d
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # ## Logging
 
     # dedupe uses Python logging to show or suppress verbose output. Added for convenience.
     # To enable verbose logging, run `python examples/csv_example/csv_example.py -v`
     optp = optparse.OptionParser()
-    optp.add_option('-v', '--verbose', dest='verbose', action='count',
-                    help='Increase verbosity (specify multiple times for more)'
-                    )
+    optp.add_option(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="count",
+        help="Increase verbosity (specify multiple times for more)",
+    )
     (opts, args) = optp.parse_args()
     log_level = logging.WARNING
     if opts.verbose:
@@ -78,40 +82,39 @@ if __name__ == '__main__':
 
     # ## Setup
 
-    output_file = 'data_matching_output.csv'
-    settings_file = 'data_matching_learned_settings'
-    training_file = 'data_matching_training.json'
+    output_file = "data_matching_output.csv"
+    settings_file = "data_matching_learned_settings"
+    training_file = "data_matching_training.json"
 
-    left_file = 'AbtBuy_Abt.csv'
-    right_file = 'AbtBuy_Buy.csv'
+    left_file = "AbtBuy_Abt.csv"
+    right_file = "AbtBuy_Buy.csv"
 
-    print('importing data ...')
+    print("importing data ...")
     data_1 = readData(left_file)
     data_2 = readData(right_file)
 
     def descriptions():
         for dataset in (data_1, data_2):
             for record in dataset.values():
-                yield record['description']
+                yield record["description"]
 
     # ## Training
 
     if os.path.exists(settings_file):
-        print('reading from', settings_file)
-        with open(settings_file, 'rb') as sf:
+        print("reading from", settings_file)
+        with open(settings_file, "rb") as sf:
             linker = dedupe.StaticRecordLink(sf)
 
     else:
         # Define the fields the linker will pay attention to
-        #
-        # Notice how we are telling the linker to use a custom field comparator
-        # for the 'price' field.
         fields = [
-            {'field': 'title', 'type': 'String'},
-            {'field': 'title', 'type': 'Text', 'corpus': descriptions()},
-            {'field': 'description', 'type': 'Text',
-             'has missing': True, 'corpus': descriptions()},
-            {'field': 'price', 'type': 'Price', 'has missing': True}]
+            dedupe.variables.String("title"),
+            dedupe.variables.Text("title"),
+            dedupe.variables.Text(
+                "description", corpus=descriptions(), has_missing=True
+            ),
+            dedupe.variables.Price("price", has_missing=True),
+        ]
 
         # Create a new linker object and pass our data model to it.
         linker = dedupe.RecordLink(fields)
@@ -120,12 +123,11 @@ if __name__ == '__main__':
         # look for it an load it in.
         # __Note:__ if you want to train from scratch, delete the training_file
         if os.path.exists(training_file):
-            print('reading labeled examples from ', training_file)
+            print("reading labeled examples from ", training_file)
             with open(training_file) as tf:
-                linker.prepare_training(data_1,
-                                        data_2,
-                                        training_file=tf,
-                                        sample_size=15000)
+                linker.prepare_training(
+                    data_1, data_2, training_file=tf, sample_size=15000
+                )
         else:
             linker.prepare_training(data_1, data_2, sample_size=15000)
 
@@ -135,20 +137,20 @@ if __name__ == '__main__':
         # or not.
         # use 'y', 'n' and 'u' keys to flag duplicates
         # press 'f' when you are finished
-        print('starting active labeling...')
+        print("starting active labeling...")
 
         dedupe.console_label(linker)
 
         linker.train()
 
         # When finished, save our training away to disk
-        with open(training_file, 'w') as tf:
+        with open(training_file, "w") as tf:
             linker.write_training(tf)
 
         # Save our weights and predicates to disk.  If the settings file
         # exists, we will skip all the training and learning next time we run
         # this file.
-        with open(settings_file, 'wb') as sf:
+        with open(settings_file, "wb") as sf:
             linker.write_settings(sf)
 
     # ## Blocking
@@ -162,10 +164,10 @@ if __name__ == '__main__':
     # If we had more data, we would not pass in all the blocked data into
     # this function but a representative sample.
 
-    print('clustering...')
+    print("clustering...")
     linked_records = linker.join(data_1, data_2, 0.0)
 
-    print('# duplicate sets', len(linked_records))
+    print("# duplicate sets", len(linked_records))
     # ## Writing Results
 
     # Write our original data back out to a CSV with a new column called
@@ -174,10 +176,12 @@ if __name__ == '__main__':
     cluster_membership = {}
     for cluster_id, (cluster, score) in enumerate(linked_records):
         for record_id in cluster:
-            cluster_membership[record_id] = {'Cluster ID': cluster_id,
-                                             'Link Score': score}
+            cluster_membership[record_id] = {
+                "Cluster ID": cluster_id,
+                "Link Score": score,
+            }
 
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
 
         header_unwritten = True
 
@@ -187,8 +191,11 @@ if __name__ == '__main__':
 
                 if header_unwritten:
 
-                    fieldnames = (['Cluster ID', 'Link Score', 'source file'] +
-                                  reader.fieldnames)
+                    fieldnames = [
+                        "Cluster ID",
+                        "Link Score",
+                        "source file",
+                    ] + reader.fieldnames
 
                     writer = csv.DictWriter(f, fieldnames=fieldnames)
                     writer.writeheader()
@@ -199,7 +206,7 @@ if __name__ == '__main__':
 
                     record_id = filename + str(row_id)
                     cluster_details = cluster_membership.get(record_id, {})
-                    row['source file'] = fileno
+                    row["source file"] = fileno
                     row.update(cluster_details)
 
                     writer.writerow(row)
