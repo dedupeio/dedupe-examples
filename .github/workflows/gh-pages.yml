@@ -30,13 +30,21 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./
-          destination: ./_site
+      - name: install
+        run: pip install pycco
+      - name: build
+        run: |
+          pycco csv_example/csv_example.py
+          pycco mysql_example/mysql_example.py
+          pycco mysql_example/mysql_init_db.py
+          pycco patent_example/patent_example.py
+          pycco record_linkage_example/record_linkage_example.py
+          pycco gazetteer_example/gazetteer_example.py
+          pycco pgsql_big_dedupe_example/pgsql_big_dedupe_example.py
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs
 
   # Deployment job
   deploy:
