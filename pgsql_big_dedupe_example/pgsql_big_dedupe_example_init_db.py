@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 This is a setup script for mysql_example.  It downloads a zip file of
 Illinois campaign contributions and loads them in t aMySQL database
@@ -51,7 +50,7 @@ if not os.path.exists(contributions_txt_file):
 # Postgres COPY doesn't handle "ragged" files very well
 if not os.path.exists(contributions_csv_file):
     print("converting tab-delimited raw file to csv...")
-    with open(contributions_txt_file, "rU") as txt_file, open(
+    with open(contributions_txt_file) as txt_file, open(
         contributions_csv_file, "w"
     ) as csv_file:
         csv_writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
@@ -109,7 +108,7 @@ c.execute(
 
 conn.commit()
 
-with open(contributions_csv_file, "rU") as csv_file:
+with open(contributions_csv_file) as csv_file:
     c.copy_expert(
         "COPY raw_table "
         "(reciept_id, last_name, first_name, "

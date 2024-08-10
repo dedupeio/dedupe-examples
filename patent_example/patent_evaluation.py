@@ -31,8 +31,8 @@ def dupePairs(filename, colname):
     if "x" in dupe_d:
         del dupe_d["x"]
 
-    dupe_s = set([])
-    for (unique_id, cluster) in dupe_d.items():
+    dupe_s = set()
+    for unique_id, cluster in dupe_d.items():
         if len(cluster) > 1:
             for pair in itertools.combinations(cluster, 2):
                 dupe_s.add(frozenset(pair))

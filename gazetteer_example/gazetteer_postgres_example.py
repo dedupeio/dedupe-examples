@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 """
 This code demonstrates Gazetteer matching backed by a Postgres database.
 
@@ -160,7 +159,7 @@ def read_data_for_postgres(filename):
         writer.writeheader()
 
         for idx, row in enumerate(reader):
-            clean_row = dict([(k, preProcess(v)) for k, v in row.items()])
+            clean_row = {k: preProcess(v) for k, v in row.items()}
             if clean_row["price"]:
                 clean_row["price"] = float(clean_row["price"][1:])
             if clean_row["unique_id"]:

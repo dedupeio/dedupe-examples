@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 """
 This code demonstrates how to use some extended dedupe variables
 """
@@ -169,7 +168,7 @@ if __name__ == "__main__":
     # 'Cluster ID' which indicates which records refer to each other.
 
     cluster_membership = {}
-    for (cluster_id, cluster) in enumerate(clustered_dupes):
+    for cluster_id, cluster in enumerate(clustered_dupes):
         id_set, scores = cluster
         for record_id, score in zip(id_set, scores):
             cluster_membership[record_id] = {

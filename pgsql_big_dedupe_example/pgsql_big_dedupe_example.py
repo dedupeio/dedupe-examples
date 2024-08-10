@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 This is an example of working with very large data. There are about
@@ -38,7 +37,7 @@ register_adapter(numpy.float32, AsIs)
 register_adapter(numpy.float64, AsIs)
 
 
-class Readable(object):
+class Readable:
     def __init__(self, iterator):
 
         self.output = io.StringIO()

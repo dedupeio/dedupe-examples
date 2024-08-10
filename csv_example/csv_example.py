@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 """
 This code demonstrates how to use dedupe with a comma separated values
 (CSV) file. All operations are performed in memory, so will run very
@@ -79,7 +78,7 @@ if __name__ == "__main__":
             log_level = logging.INFO
         elif opts.verbose >= 2:
             log_level = logging.DEBUG
-    logging.getLogger().setLevel(log_level)
+    logging.basicConfig(level=log_level)
 
     # ## Setup
 

@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 """
 This code demonstrates the Gazetteer.
 
@@ -49,7 +48,7 @@ def readData(filename):
     with open(filename) as f:
         reader = csv.DictReader(f)
         for i, row in enumerate(reader):
-            clean_row = dict([(k, preProcess(v)) for (k, v) in row.items()])
+            clean_row = {k: preProcess(v) for (k, v) in row.items()}
             if clean_row["price"]:
                 clean_row["price"] = float(clean_row["price"][1:])
             data_d[filename + str(i)] = dict(clean_row)
@@ -92,10 +91,10 @@ if __name__ == "__main__":
 
     print("importing data ...")
     messy = readData(messy_file)
-    print("N data 1 records: {}".format(len(messy)))
+    print(f"N data 1 records: {len(messy)}")
 
     canonical = readData(canon_file)
-    print("N data 2 records: {}".format(len(canonical)))
+    print(f"N data 2 records: {len(canonical)}")
 
     def descriptions():
         for dataset in (messy, canonical):

@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 """
 This code demonstrates how to use RecordLink with two comma separated
 values (CSV) files. We have listings of products from two different
@@ -49,7 +48,7 @@ def readData(filename):
     with open(filename) as f:
         reader = csv.DictReader(f)
         for i, row in enumerate(reader):
-            clean_row = dict([(k, preProcess(v)) for (k, v) in row.items()])
+            clean_row = {k: preProcess(v) for (k, v) in row.items()}
             if clean_row["price"]:
                 clean_row["price"] = float(clean_row["price"][1:])
             data_d[filename + str(i)] = dict(clean_row)

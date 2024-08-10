@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 """
 This code demonstrates how to use dedupe to disambiguate patent
 authors and demonstrates the Set and LatLong data types.
@@ -26,7 +25,7 @@ def readData(filename, set_delim="**"):
     with open(filename) as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
-            row = dict((k, v.lower()) for k, v in row.items())
+            row = {k: v.lower() for k, v in row.items()}
             if row["Lat"] == row["Lng"] == "0.0":
                 row["LatLong"] = None
             else:
